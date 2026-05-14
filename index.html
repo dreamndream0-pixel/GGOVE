@@ -388,6 +388,110 @@ html, body {
 .tender-card-links a.link-soft { color: var(--text-faint); font-weight: 400; }
 .tender-card-links .link-sep { color: var(--border-strong); }
 
+.btn-history {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-history:hover { color: var(--text); }
+
+.tender-history {
+  margin: 0 20px 16px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.history-loading {
+  font-size: 13px;
+  color: var(--text-soft);
+  text-align: center;
+  padding: 10px 0;
+}
+.history-header {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+}
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hist-row {
+  display: grid;
+  grid-template-columns: 16px 90px 130px 1fr 70px;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 4px;
+  font-size: 13px;
+  border-bottom: 1px solid transparent;
+}
+.hist-row:hover { background: var(--surface-soft); border-radius: 3px; }
+.hist-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 4px;
+}
+.hist-date {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.hist-type {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+.hist-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.hist-amount {
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--text);
+}
+.hist-company {
+  color: var(--award);
+  font-weight: 500;
+}
+.hist-link {
+  text-align: right;
+}
+.hist-link a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+}
+.hist-link a:hover { text-decoration: underline; }
+
+@media (max-width: 720px) {
+  .hist-row {
+    grid-template-columns: 8px 1fr;
+    gap: 6px;
+  }
+  .hist-date, .hist-type, .hist-meta, .hist-link {
+    grid-column: 2;
+  }
+  .hist-link { text-align: left; }
+}
+
 .tender-card-top {
   display: flex;
   align-items: center;
@@ -834,6 +938,9 @@ async function search() {
       // 副連結:總是指向 g0v viewer(資料整理頁,廠商、預算、聯絡人都有)
       altUrl: `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(unitId)}&job_number=${encodeURIComponent(jobNo)}`,
       hasPccUrl: !!pccUrl,
+      // 給歷史功能用
+      unitId: unitId,
+      jobNo: jobNo,
     };
   });
 
@@ -860,6 +967,9 @@ function renderResults() {
   const awardCount = sorted.filter(r => r.type === 'award').length;
   const totalAmount = sorted.reduce((s, r) => s + r.amount, 0);
 
+  // 暫存供歷史展開功能使用
+  window._sortedResults = sorted;
+
   $('s-total').textContent = total.toLocaleString();
   $('s-tender').textContent = tenderCount.toLocaleString();
   $('s-award').textContent = awardCount.toLocaleString();
@@ -873,8 +983,8 @@ function renderResults() {
     return;
   }
 
-  body.innerHTML = sorted.map(r => `
-    <div class="tender-card">
+  body.innerHTML = sorted.map((r, i) => `
+    <div class="tender-card" data-idx="${i}">
       <div class="tender-card-main" onclick="window.open('${r.url}','_blank')">
         <div class="tender-card-top">
           <span class="tag tag-${r.type}">${r.typeLabel}</span>
@@ -892,7 +1002,12 @@ function renderResults() {
           : `<a href="${r.altUrl}" target="_blank" rel="noopener">查看標案詳情 →</a>
              <span class="link-soft" style="color:var(--text-faint);font-size:11px;">(此類公告無直連,請至詳情頁查看)</span>`
         }
+        ${r.unitId && r.jobNo
+          ? `<span class="link-sep">·</span>
+             <button class="btn-history" data-idx="${i}" onclick="toggleHistory(${i}, event)">查看本案所有公告 ▾</button>`
+          : ''}
       </div>
+      <div class="tender-history" id="history-${i}" style="display:none;"></div>
     </div>
   `).join('');
 }
@@ -901,6 +1016,118 @@ function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
   }[c]));
+}
+
+// ----- History expand -----
+// 快取已抓過的案件歷史,避免重複呼叫 API
+const historyCache = {};
+
+async function toggleHistory(idx, ev) {
+  ev.stopPropagation();
+  const r = (window._sortedResults || [])[idx];
+  if (!r) return;
+  const box = document.getElementById('history-' + idx);
+  const btn = ev.currentTarget;
+  if (!box) return;
+
+  // 切換顯示
+  if (box.style.display !== 'none') {
+    box.style.display = 'none';
+    btn.innerHTML = '查看本案所有公告 ▾';
+    return;
+  }
+
+  box.style.display = 'block';
+  btn.innerHTML = '收起 ▴';
+
+  const cacheKey = r.unitId + '|' + r.jobNo;
+  if (historyCache[cacheKey]) {
+    renderHistory(box, historyCache[cacheKey]);
+    return;
+  }
+
+  box.innerHTML = `<div class="history-loading"><span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:-2px;"></span> 載入歷史紀錄...</div>`;
+
+  try {
+    const url = 'https://pcc-api.openfun.app/api/tender?unit_id=' +
+                encodeURIComponent(r.unitId) +
+                '&job_number=' + encodeURIComponent(r.jobNo);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API ' + res.status);
+    const data = await res.json();
+    const records = data.records || [];
+    historyCache[cacheKey] = records;
+    renderHistory(box, records);
+  } catch (e) {
+    box.innerHTML = `<div class="history-loading" style="color:var(--accent);">載入失敗:${escapeHtml(e.message)}。可能是網路或 API 暫時忙線,請稍後再試。</div>`;
+  }
+}
+
+function renderHistory(box, records) {
+  if (!records || records.length === 0) {
+    box.innerHTML = '<div class="history-loading">這筆案件目前只有當前一筆公告,沒有其他歷史紀錄。</div>';
+    return;
+  }
+
+  // 依日期由新到舊排序
+  const sorted = [...records].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+  const rowsHtml = sorted.map(rec => {
+    const brief = rec.brief || {};
+    const t = brief.type || '';
+    const isAward = t.indexOf('決標') !== -1;
+    const isRental = t.indexOf('出租') !== -1;
+    const isAmend = t.indexOf('更正') !== -1;
+    let dotColor = 'var(--tender)';
+    let typeShort = t || '公告';
+    if (isAward) { dotColor = 'var(--award)'; }
+    else if (isRental) { dotColor = 'var(--rental)'; }
+    else if (isAmend) { dotColor = '#9333ea'; }
+
+    // 從 filename 推採購網直連
+    const filename = rec.filename || '';
+    const m = filename.match(/^(ttd|atm)-(\d+)$/i);
+    let recUrl = '';
+    if (m) {
+      const pk = btoa(m[2]).replace(/=+$/, '');
+      recUrl = `https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=${pk}`;
+    }
+
+    // 金額
+    let amtStr = '';
+    const companies = brief.companies || {};
+    if (companies && companies.amount) {
+      amtStr = fmtMoney(Number(companies.amount));
+    } else if (brief.amount) {
+      amtStr = fmtMoney(Number(brief.amount));
+    }
+
+    // 得標廠商(只決標公告才有)
+    let companyStr = '';
+    if (isAward && companies.names && companies.names.length) {
+      companyStr = `<span class="hist-company">得標:${escapeHtml(companies.names.join(', '))}</span>`;
+    }
+
+    return `
+      <div class="hist-row">
+        <div class="hist-dot" style="background:${dotColor};"></div>
+        <div class="hist-date">${fmtDate(String(rec.date))}</div>
+        <div class="hist-type">${escapeHtml(typeShort)}</div>
+        <div class="hist-meta">
+          ${amtStr ? `<span class="hist-amount">${amtStr}</span>` : ''}
+          ${companyStr}
+        </div>
+        <div class="hist-link">
+          ${recUrl ? `<a href="${recUrl}" target="_blank" rel="noopener">採購網 →</a>` : '<span style="color:var(--text-faint);font-size:11px;">無直連</span>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  box.innerHTML = `
+    <div class="history-header">本案共 ${records.length} 筆公告</div>
+    <div class="history-list">${rowsHtml}</div>
+  `;
 }
 
 // ----- Export CSV -----
