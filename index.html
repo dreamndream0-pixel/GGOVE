@@ -25,6 +25,12 @@
   --award-soft: #f0fdf4;
   --rental: #92400e;
   --rental-soft: #fef3c7;
+  --sell: #155e75;
+  --sell-soft: #ecfeff;
+  --amend: #7c3aed;
+  --amend-soft: #f5f3ff;
+  --other: #525252;
+  --other-soft: #f5f5f4;
   --shadow-sm: 0 1px 2px rgba(28, 28, 26, 0.04);
   --shadow: 0 1px 3px rgba(28, 28, 26, 0.06), 0 4px 16px rgba(28, 28, 26, 0.04);
   --radius: 6px;
@@ -510,6 +516,63 @@ html, body {
 .tag-tender { background: var(--tender-soft); color: var(--tender); }
 .tag-award { background: var(--award-soft); color: var(--award); }
 .tag-rental { background: var(--rental-soft); color: var(--rental); }
+.tag-sell { background: var(--sell-soft); color: var(--sell); }
+.tag-amend { background: var(--amend-soft); color: var(--amend); }
+.tag-other { background: var(--other-soft); color: var(--other); }
+
+.type-checkboxes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.type-cb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  font-size: 12px;
+}
+.type-cb:hover { background: var(--surface-soft); border-color: var(--border-strong); }
+.type-cb input { margin: 0; cursor: pointer; accent-color: var(--text); }
+.type-cb:has(input:checked) { background: var(--surface); border-color: var(--text); }
+.type-cb-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.type-cb-tag.type-tender { background: var(--tender-soft); color: var(--tender); }
+.type-cb-tag.type-award { background: var(--award-soft); color: var(--award); }
+.type-cb-tag.type-rental { background: var(--rental-soft); color: var(--rental); }
+.type-cb-tag.type-sell { background: var(--sell-soft); color: var(--sell); }
+.type-cb-tag.type-amend { background: var(--amend-soft); color: var(--amend); }
+.type-cb-tag.type-other { background: var(--other-soft); color: var(--other); }
+
+.type-quick {
+  display: flex;
+  gap: 4px;
+}
+.type-quick button {
+  flex: 1;
+  padding: 5px 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+.type-quick button:hover { background: var(--surface-soft); color: var(--text); }
 
 .tender-date {
   font-family: var(--mono);
@@ -675,11 +738,19 @@ html, body {
     </div>
 
     <div class="sb-section">
-      <label class="sb-label">公告類型</label>
-      <div class="sb-radio-group" id="type-group">
-        <label class="checked" data-val="all">全部</label>
-        <label data-val="tender">招標</label>
-        <label data-val="award">決標</label>
+      <label class="sb-label">公告類型 <span style="text-transform:none;letter-spacing:0;color:var(--text-faint);">(可複選)</span></label>
+      <div class="type-checkboxes" id="type-group">
+        <label class="type-cb"><input type="checkbox" value="tender" checked><span class="type-cb-tag type-tender">招標</span></label>
+        <label class="type-cb"><input type="checkbox" value="award" checked><span class="type-cb-tag type-award">決標</span></label>
+        <label class="type-cb"><input type="checkbox" value="rental"><span class="type-cb-tag type-rental">財物出租</span></label>
+        <label class="type-cb"><input type="checkbox" value="sell"><span class="type-cb-tag type-sell">財物變賣</span></label>
+        <label class="type-cb"><input type="checkbox" value="amend"><span class="type-cb-tag type-amend">更正</span></label>
+        <label class="type-cb"><input type="checkbox" value="other"><span class="type-cb-tag type-other">其他</span></label>
+      </div>
+      <div class="type-quick">
+        <button type="button" id="type-all">全選</button>
+        <button type="button" id="type-none">全不選</button>
+        <button type="button" id="type-reset">預設</button>
       </div>
     </div>
 
@@ -751,15 +822,52 @@ const STORAGE_KEY = 'tender_explorer_v1';
 
 const $ = id => document.getElementById(id);
 let currentResults = [];
-let currentType = 'all';
+let currentTypes = new Set(['tender', 'award']); // 預設只勾招標+決標
 
-// ----- Type radio group -----
-document.querySelectorAll('#type-group label').forEach(el => {
-  el.addEventListener('click', () => {
-    document.querySelectorAll('#type-group label').forEach(l => l.classList.remove('checked'));
-    el.classList.add('checked');
-    currentType = el.dataset.val;
+// 依公告 type 字串分類成 typeKey
+function classifyType(typeStr) {
+  const t = typeStr || '';
+  if (t.indexOf('更正') !== -1) return 'amend';
+  if (t.indexOf('決標') !== -1 || t.indexOf('無法決標') !== -1 || t.indexOf('廢標') !== -1) return 'award';
+  if (t.indexOf('財物出租') !== -1 || (t.indexOf('出租') !== -1 && t.indexOf('招標') === -1)) return 'rental';
+  if (t.indexOf('財物變賣') !== -1 || t.indexOf('變賣') !== -1) return 'sell';
+  if (t.indexOf('招標') !== -1 || t.indexOf('公開取得') !== -1 || t.indexOf('限制性') !== -1 || t.indexOf('議價') !== -1) return 'tender';
+  return 'other';
+}
+
+// type-cb checkbox 變動時更新 currentTypes
+document.querySelectorAll('#type-group input[type="checkbox"]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    if (cb.checked) currentTypes.add(cb.value);
+    else currentTypes.delete(cb.value);
+    saveSettings();
   });
+});
+
+function syncTypeCheckboxes() {
+  document.querySelectorAll('#type-group input[type="checkbox"]').forEach(cb => {
+    cb.checked = currentTypes.has(cb.value);
+  });
+}
+
+document.getElementById('type-all').addEventListener('click', () => {
+  document.querySelectorAll('#type-group input[type="checkbox"]').forEach(cb => {
+    cb.checked = true;
+    currentTypes.add(cb.value);
+  });
+  saveSettings();
+});
+document.getElementById('type-none').addEventListener('click', () => {
+  document.querySelectorAll('#type-group input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+  });
+  currentTypes = new Set();
+  saveSettings();
+});
+document.getElementById('type-reset').addEventListener('click', () => {
+  currentTypes = new Set(['tender', 'award']);
+  syncTypeCheckboxes();
+  saveSettings();
 });
 
 // ----- Save/load settings -----
@@ -769,7 +877,7 @@ function saveSettings() {
     include: $('include').value,
     exclude: $('exclude').value,
     unit: $('unit').value,
-    type: currentType,
+    types: Array.from(currentTypes),
     pages: $('pages').value,
     dateFrom: $('date-from').value,
     dateTo: $('date-to').value,
@@ -786,11 +894,14 @@ function loadSettings() {
     if (s.pages) $('pages').value = s.pages;
     if (s.dateFrom !== undefined) $('date-from').value = s.dateFrom;
     if (s.dateTo !== undefined) $('date-to').value = s.dateTo;
-    if (s.type) {
-      currentType = s.type;
-      document.querySelectorAll('#type-group label').forEach(l => {
-        l.classList.toggle('checked', l.dataset.val === s.type);
-      });
+    if (Array.isArray(s.types)) {
+      currentTypes = new Set(s.types);
+      syncTypeCheckboxes();
+    } else if (s.type) {
+      // 舊版單選 fallback
+      if (s.type === 'all') currentTypes = new Set(['tender','award','rental','sell','amend','other']);
+      else if (s.type === 'tender' || s.type === 'award') currentTypes = new Set([s.type]);
+      syncTypeCheckboxes();
     }
   } catch (e) {}
 }
@@ -887,11 +998,11 @@ async function search() {
     const title = brief.title || rec.title || '';
     const unitName = rec.unit_name || brief.unit_name || '';
     const recType = brief.type || '';
-    const isAward = recType.indexOf('決標') !== -1;
+    const typeKey = classifyType(recType);
     const dateRaw = String(rec.date || '');
 
-    if (currentType === 'tender' && isAward) return false;
-    if (currentType === 'award' && !isAward) return false;
+    if (currentTypes.size === 0) return false; // 全不選 = 全不顯示
+    if (!currentTypes.has(typeKey)) return false;
     for (const w of include) if (title.indexOf(w) === -1) return false;
     for (const w of exclude) if (title.indexOf(w) !== -1) return false;
     if (unit && unitName.indexOf(unit) === -1) return false;
@@ -903,17 +1014,13 @@ async function search() {
   currentResults = filtered.map(rec => {
     const brief = rec.brief || {};
     const briefType = brief.type || '';
-    const isAward = briefType.indexOf('決標') !== -1;
-    const isRental = briefType.indexOf('財物出租') !== -1 || briefType.indexOf('出租') !== -1;
+    const typeKey = classifyType(briefType);
     const amount = getAmount(rec);
     const jobNo = rec.job_number || '';
     const unitId = rec.unit_id || '';
     const filename = rec.filename || '';
 
-    // 採購網直連 URL 規則:
-    // - ttd-XXXXXXXX / atm-XXXXXXXX (一般政府機關採購):filename 後段是純數字,base64 後是 pkPmsMain
-    // - FAR-X-XXXXXXXX (財物出租類):採購網 URL 結構不同,沒辦法用同樣方法
-    // - 其他未知前綴:保守起見不嘗試,直接走 fallback
+    // 採購網直連 URL 規則
     let pccUrl = '';
     const fnMatch = filename.match(/^(ttd|atm)-(\d+)$/i);
     if (fnMatch) {
@@ -922,10 +1029,12 @@ async function search() {
       pccUrl = `https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=${pkPmsMain}`;
     }
 
-    // 類型標籤:招標 / 決標 / 出租
-    let typeKey = 'tender', typeLabel = '招標';
-    if (isAward) { typeKey = 'award'; typeLabel = '決標'; }
-    else if (isRental) { typeKey = 'rental'; typeLabel = '出租'; }
+    // 類型標籤
+    const typeLabels = {
+      tender: '招標', award: '決標', rental: '出租',
+      sell: '變賣', amend: '更正', other: '其他'
+    };
+    const typeLabel = typeLabels[typeKey] || '公告';
 
     return {
       title: brief.title || rec.title || '(無標題)',
@@ -1155,14 +1264,14 @@ function renderHistory(box, records, r) {
   const rowsHtml = sorted.map(rec => {
     const brief = rec.brief || {};
     const t = brief.type || '';
-    const isAward = t.indexOf('決標') !== -1;
-    const isRental = t.indexOf('出租') !== -1;
-    const isAmend = t.indexOf('更正') !== -1;
-    let dotColor = 'var(--tender)';
-    let typeShort = t || '公告';
-    if (isAward) { dotColor = 'var(--award)'; }
-    else if (isRental) { dotColor = 'var(--rental)'; }
-    else if (isAmend) { dotColor = '#9333ea'; }
+    const tk = classifyType(t);
+    const dotColors = {
+      tender: 'var(--tender)', award: 'var(--award)',
+      rental: 'var(--rental)', sell: 'var(--sell)',
+      amend: 'var(--amend)', other: 'var(--other)'
+    };
+    const dotColor = dotColors[tk] || 'var(--text-faint)';
+    const typeShort = t || '公告';
 
     // 從 filename 推採購網直連
     const filename = rec.filename || '';
@@ -1259,10 +1368,8 @@ function reset() {
   $('date-from').value = '';
   $('date-to').value = '';
   document.querySelectorAll('.date-quick button').forEach(b => b.classList.remove('active'));
-  currentType = 'all';
-  document.querySelectorAll('#type-group label').forEach(l => {
-    l.classList.toggle('checked', l.dataset.val === 'all');
-  });
+  currentTypes = new Set(['tender', 'award']);
+  syncTypeCheckboxes();
   saveSettings();
   toast('條件已重置');
 }
