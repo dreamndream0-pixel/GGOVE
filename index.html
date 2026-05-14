@@ -433,11 +433,15 @@ html, body {
   grid-template-columns: 16px 90px 130px 1fr 70px;
   gap: 10px;
   align-items: center;
-  padding: 6px 4px;
+  padding: 8px 6px;
   font-size: 13px;
-  border-bottom: 1px solid transparent;
+  border-radius: 3px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s ease;
 }
-.hist-row:hover { background: var(--surface-soft); border-radius: 3px; }
+.hist-row:hover { background: var(--surface); }
+.hist-row:hover .hist-link { color: var(--accent); }
 .hist-dot {
   width: 8px;
   height: 8px;
@@ -472,14 +476,11 @@ html, body {
 }
 .hist-link {
   text-align: right;
-}
-.hist-link a {
-  color: var(--accent);
-  text-decoration: none;
   font-size: 12px;
   font-weight: 500;
+  color: var(--text-soft);
+  transition: color 0.12s ease;
 }
-.hist-link a:hover { text-decoration: underline; }
 
 @media (max-width: 720px) {
   .hist-row {
@@ -999,8 +1000,7 @@ function renderResults() {
           ? `<a href="${r.url}" target="_blank" rel="noopener">採購網原始公告 →</a>
              <span class="link-sep">·</span>
              <a href="${r.altUrl}" target="_blank" rel="noopener" class="link-soft">查看資料整理</a>`
-          : `<a href="${r.altUrl}" target="_blank" rel="noopener">查看標案詳情 →</a>
-             <span class="link-soft" style="color:var(--text-faint);font-size:11px;">(此類公告無直連,請至詳情頁查看)</span>`
+          : `<a href="${r.altUrl}" target="_blank" rel="noopener">查看資料整理 →</a>`
         }
         ${r.unitId && r.jobNo
           ? `<span class="link-sep">·</span>
@@ -1122,7 +1122,7 @@ async function toggleHistory(idx, ev) {
 
   const cacheKey = r.unitId + '|' + r.jobNo;
   if (historyCache[cacheKey]) {
-    renderHistory(box, historyCache[cacheKey]);
+    renderHistory(box, historyCache[cacheKey], r);
     return;
   }
 
@@ -1137,13 +1137,13 @@ async function toggleHistory(idx, ev) {
     const data = await res.json();
     const records = data.records || [];
     historyCache[cacheKey] = records;
-    renderHistory(box, records);
+    renderHistory(box, records, r);
   } catch (e) {
     box.innerHTML = `<div class="history-loading" style="color:var(--accent);">載入失敗:${escapeHtml(e.message)}。可能是網路或 API 暫時忙線,請稍後再試。</div>`;
   }
 }
 
-function renderHistory(box, records) {
+function renderHistory(box, records, r) {
   if (!records || records.length === 0) {
     box.innerHTML = '<div class="history-loading">這筆案件目前只有當前一筆公告,沒有其他歷史紀錄。</div>';
     return;
@@ -1192,8 +1192,12 @@ function renderHistory(box, records) {
       companyStr = `<span class="hist-company" title="${escapeHtml(fullList)}">得標:${escapeHtml(displayNames)}</span>`;
     }
 
+    // 整行用 g0v viewer 當主連結(若無採購網直連也能用),採購網直連另開於右側
+    const altUrl = `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}&filename=${encodeURIComponent(filename)}`;
+    const mainHref = recUrl || altUrl;
+
     return `
-      <div class="hist-row">
+      <a href="${mainHref}" target="_blank" rel="noopener" class="hist-row">
         <div class="hist-dot" style="background:${dotColor};"></div>
         <div class="hist-date">${fmtDate(String(rec.date))}</div>
         <div class="hist-type">${escapeHtml(typeShort)}</div>
@@ -1202,9 +1206,9 @@ function renderHistory(box, records) {
           ${companyStr}
         </div>
         <div class="hist-link">
-          ${recUrl ? `<a href="${recUrl}" target="_blank" rel="noopener">採購網 →</a>` : '<span style="color:var(--text-faint);font-size:11px;">無直連</span>'}
+          ${recUrl ? '採購網 →' : '<span style="color:var(--text-faint);font-size:11px;">詳情頁 →</span>'}
         </div>
-      </div>
+      </a>
     `;
   }).join('');
 
