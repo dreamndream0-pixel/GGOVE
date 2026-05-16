@@ -708,6 +708,47 @@ html, body {
   vertical-align: middle;
 }
 
+.tender-times {
+  margin-top: 8px;
+  font-size: 12px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.times-loading {
+  color: var(--text-faint);
+  font-style: italic;
+  font-size: 11px;
+}
+.time-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.time-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+.time-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+.time-value.urgent {
+  color: var(--accent);
+  font-weight: 600;
+}
+.time-na {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
 /* ============ Empty / Loading ============ */
 .state {
   padding: 80px 20px;
@@ -1116,13 +1157,11 @@ async function search() {
     const unitId = rec.unit_id || '';
     const filename = rec.filename || '';
 
-    // 採購網直連 URL 規則
+    // 採購網「萬用直連 URL」— 所有 filename 前綴都適用
+    // 格式:https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=YYYYMMDD&fn=FILENAME.xml
     let pccUrl = '';
-    const fnMatch = filename.match(/^(ttd|atm)-(\d+)$/i);
-    if (fnMatch) {
-      const pmsId = fnMatch[2];
-      const pkPmsMain = btoa(pmsId).replace(/=+$/, '');
-      pccUrl = `https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=${pkPmsMain}`;
+    if (filename && rec.date) {
+      pccUrl = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(filename)}.xml`;
     }
 
     // 類型標籤
@@ -1232,6 +1271,7 @@ function renderResults() {
         </div>
         <div class="tender-title">${escapeHtml(r.title)}</div>
         <div class="tender-unit">${escapeHtml(r.unit) || '(機關未填)'}</div>
+        <div class="tender-times" id="times-${i}"><span class="times-loading">截標 / 開標 載入中…</span></div>
       </div>
       <div class="tender-card-links">
         ${r.hasPccUrl 
@@ -1251,12 +1291,133 @@ function renderResults() {
     </div>
   `;
   }).join('');
+
+  // 啟動背景抓截標/開標時間
+  fetchTimesInBackground(grouped);
 }
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
   }[c]));
+}
+
+// ----- 背景抓截標/開標時間(每張卡片) -----
+const timesCache = {};        // 快取已抓過的標案時間
+let timesBgFailures = 0;       // 連續失敗計數
+const TIMES_MAX_FAILURES = 3;  // 熔斷閾值
+
+function fmtTimeStr(raw) {
+  // 政府格式可能是 "115/05/21 09:30" 或 "11505210930"
+  if (!raw) return '';
+  raw = String(raw).trim();
+  // 已含斜線就直接用
+  if (raw.indexOf('/') !== -1) return raw;
+  // 11505210930 → 115/05/21 09:30
+  const m = raw.match(/^(\d{3})(\d{2})(\d{2})(\d{2})?(\d{2})?/);
+  if (m) {
+    let s = `${m[1]}/${m[2]}/${m[3]}`;
+    if (m[4]) s += ' ' + m[4] + (m[5] ? ':' + m[5] : '');
+    return s;
+  }
+  return raw;
+}
+
+// 判斷是不是即將截標(7 天內)
+function isUrgent(timeStr) {
+  if (!timeStr) return false;
+  // 嘗試解析 "115/05/21 09:30" 民國年
+  const m = timeStr.match(/^(\d{3})\/(\d{2})\/(\d{2})/);
+  if (!m) return false;
+  const year = parseInt(m[1]) + 1911;
+  const month = parseInt(m[2]);
+  const day = parseInt(m[3]);
+  const target = new Date(year, month - 1, day);
+  const now = new Date();
+  const diffDays = (target - now) / 86400000;
+  return diffDays >= 0 && diffDays <= 7;
+}
+
+function extractTimes(record) {
+  // 從 tender API 的 record 取截標/開標時間
+  const detail = record.detail || {};
+  let deadline = '', openTime = '';
+  for (const k of Object.keys(detail)) {
+    const v = detail[k];
+    if (!v) continue;
+    if (k.indexOf('截止投標') !== -1 || k.indexOf('截標時間') !== -1) deadline = String(v);
+    else if (k.indexOf('開標時間') !== -1) openTime = String(v);
+  }
+  return { deadline: fmtTimeStr(deadline), openTime: fmtTimeStr(openTime) };
+}
+
+function renderTimes(idx, deadline, openTime) {
+  const el = document.getElementById('times-' + idx);
+  if (!el) return;
+  if (!deadline && !openTime) {
+    el.innerHTML = '<span class="time-na">— 無公開時間資訊</span>';
+    return;
+  }
+  const dlClass = isUrgent(deadline) ? 'time-value urgent' : 'time-value';
+  const otClass = isUrgent(openTime) ? 'time-value urgent' : 'time-value';
+  el.innerHTML = `
+    ${deadline ? `<span class="time-item"><span class="time-label">截標</span><span class="${dlClass}">${escapeHtml(deadline)}</span></span>` : ''}
+    ${openTime ? `<span class="time-item"><span class="time-label">開標</span><span class="${otClass}">${escapeHtml(openTime)}</span></span>` : ''}
+  `;
+}
+
+async function fetchTimesInBackground(grouped) {
+  timesBgFailures = 0;
+  for (let i = 0; i < grouped.length; i++) {
+    const r = grouped[i];
+    if (!r.unitId || !r.jobNo) {
+      const el = document.getElementById('times-' + i);
+      if (el) el.innerHTML = '<span class="time-na">— 無 API 資料</span>';
+      continue;
+    }
+    const cacheKey = r.unitId + '|' + r.jobNo;
+
+    // 快取命中
+    if (timesCache[cacheKey]) {
+      const c = timesCache[cacheKey];
+      renderTimes(i, c.deadline, c.openTime);
+      continue;
+    }
+
+    // 熔斷:連續失敗超過閾值就停止背景抓
+    if (timesBgFailures >= TIMES_MAX_FAILURES) {
+      const el = document.getElementById('times-' + i);
+      if (el) el.innerHTML = '<span class="time-na">— 暫停載入(請求過密)</span>';
+      continue;
+    }
+
+    // 卡片可能已被使用者重新搜尋取代,確認還在 DOM 才打
+    if (!document.getElementById('times-' + i)) continue;
+
+    try {
+      const url = `https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      // 取最新一筆 record
+      const latest = (data.records || [])[0];
+      if (latest) {
+        const t = extractTimes(latest);
+        timesCache[cacheKey] = t;
+        renderTimes(i, t.deadline, t.openTime);
+      } else {
+        renderTimes(i, '', '');
+      }
+      timesBgFailures = 0; // 成功重置計數
+    } catch (e) {
+      timesBgFailures++;
+      const el = document.getElementById('times-' + i);
+      if (el) el.innerHTML = '<span class="time-na">— 載入失敗</span>';
+    }
+
+    // 隨機延遲 150-300ms,避免短時間打太密集
+    await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 150));
+  }
 }
 
 // ----- Siblings (歷次重招) -----
@@ -1444,13 +1605,11 @@ function renderHistory(box, records, r) {
     const dotColor = dotColors[tk] || 'var(--text-faint)';
     const typeShort = t || '公告';
 
-    // 從 filename 推採購網直連
+    // 萬用直連 URL — 所有 filename 前綴適用
     const filename = rec.filename || '';
-    const m = filename.match(/^(ttd|atm)-(\d+)$/i);
     let recUrl = '';
-    if (m) {
-      const pk = btoa(m[2]).replace(/=+$/, '');
-      recUrl = `https://web.pcc.gov.tw/tps/QueryTender/query/searchTenderDetail?pkPmsMain=${pk}`;
+    if (filename && rec.date) {
+      recUrl = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(filename)}.xml`;
     }
 
     // 金額 — 多欄位包容嘗試
