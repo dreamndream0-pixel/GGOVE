@@ -418,6 +418,28 @@ html, body {
 }
 .btn-history:hover { color: var(--text); }
 
+.tender-sib-bar {
+  padding: 0 22px 14px;
+  margin-top: -4px;
+}
+.tender-sib-bar .btn-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #fef3c7;
+  color: #78350f;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all 0.12s ease;
+}
+.tender-sib-bar .btn-history:hover {
+  background: #fde68a;
+  color: #422006;
+}
+
 .tender-history {
   margin: 0 20px 16px;
   padding: 14px 16px;
@@ -1619,8 +1641,7 @@ function renderResults() {
       ? `<span class="sib-badge" title="同名標案歷次重招 ${sibCount} 次">↻ 重招 ${sibCount} 次</span>`
       : '';
     const sibBtn = sibCount > 0
-      ? `<span class="link-sep">·</span>
-         <button class="btn-history" onclick="toggleSiblings(${i}, event)">展開歷次招標 (${sibCount + 1}) ▾</button>`
+      ? `<button class="btn-history" onclick="toggleSiblings(${i}, event)">↻ 展開歷次招標 (${sibCount + 1} 筆) ▾</button>`
       : '';
 
     return `
@@ -1638,7 +1659,7 @@ function renderResults() {
           <span class="meta-loading">載入截標 / 開標 / 公告金額…</span>
         </div>
       </div>
-      ${sibBtn ? `<div class="tender-card-links">${sibBtn}</div>` : ''}
+      ${sibBtn ? `<div class="tender-sib-bar">${sibBtn}</div>` : ''}
       <div class="tender-siblings" id="siblings-${i}" style="display:none;"></div>
     </div>
   `;
@@ -1686,21 +1707,47 @@ function extractMetaFromTender(data) {
   const detail = latest.detail || {};
 
   let deadline = '', openTime = '', announceAmount = '';
+
+  // 判斷一個 detail 值是不是「真的金額」— 必須含至少 3 位以上的數字
+  const looksLikeAmount = (v) => {
+    if (!v) return false;
+    const s = String(v);
+    // 拒絕純「是 / 否 / 不公開」這類值
+    if (/^[是否不公開無未填]+$/.test(s.trim())) return false;
+    // 必須含 4+ 位連續數字(避免「是」「否」「1.2 公頃」這種誤判)
+    const digits = (s.match(/\d/g) || []).join('');
+    return digits.length >= 4;
+  };
+
+  // 截標
   for (const k of Object.keys(detail)) {
     const v = detail[k];
     if (!v) continue;
-    if (k.indexOf('截止投標') !== -1 || k.indexOf('截標時間') !== -1) deadline = String(v);
-    else if (k.indexOf('開標時間') !== -1) openTime = String(v);
-    else if (k.indexOf('預算金額') !== -1 || k.indexOf('公告金額') !== -1) announceAmount = String(v);
+    if (k.indexOf('截止投標') !== -1 || k.indexOf('截標時間') !== -1) { deadline = String(v); break; }
   }
-  // 若沒有明確「公告金額」/「預算金額」,試試決標總金額
-  if (!announceAmount) {
+  // 開標
+  for (const k of Object.keys(detail)) {
+    const v = detail[k];
+    if (!v) continue;
+    if (k.indexOf('開標時間') !== -1) { openTime = String(v); break; }
+  }
+  // 公告金額(優先級:預算金額 > 公告金額 > 決標金額)
+  // 嚴格排除「是否公開」「金額是否公開」「金額級距」等非數字欄位
+  const tryKeys = ['預算金額', '公告金額', '總決標金額', '決標金額'];
+  for (const target of tryKeys) {
     for (const k of Object.keys(detail)) {
-      if (k.indexOf('決標金額') !== -1 || k.indexOf('總決標金額') !== -1) {
-        announceAmount = String(detail[k]); break;
+      // 必須是 key 結尾為目標詞(避免「預算金額是否公開」)
+      if (k.endsWith(target) || k === target || k.endsWith(':' + target)) {
+        const v = detail[k];
+        if (looksLikeAmount(v)) {
+          announceAmount = String(v);
+          break;
+        }
       }
     }
+    if (announceAmount) break;
   }
+
   return {
     deadline: fmtTimeStr(deadline),
     openTime: fmtTimeStr(openTime),
