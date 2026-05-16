@@ -494,6 +494,11 @@ html, body {
   color: var(--text);
   border-radius: 3px;
   background: transparent;
+  border: none;
+  font-family: var(--sans);
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
   transition: background 0.12s ease;
 }
 .sib-row:hover { background: rgba(254, 243, 199, 0.6); }
@@ -1039,7 +1044,7 @@ html, body {
   color: var(--text);
   margin: 0;
   word-break: break-word;
-  white-space: pre-wrap;
+  white-space: pre-line;
   line-height: 1.6;
 }
 .detail-grid-row.long dd {
@@ -2197,7 +2202,14 @@ function renderDetail(body, data, mainR) {
       // 標籤超過 10 字視為長標籤,改成上下排列
       const isLong = it.label.length > 10 || it.value.length > 100;
       const rowCls = isLong ? 'detail-grid-row long' : 'detail-grid-row';
-      html += `<div class="${rowCls}"><dt>${escapeHtml(it.label)}</dt><dd class="${cls}">${escapeHtml(it.value)}</dd></div>`;
+      // 清理值的多餘空白:移除 tab、壓縮多重空格、壓縮多重換行
+      const cleanValue = String(it.value)
+        .replace(/\t/g, ' ')               // tab 變空格
+        .replace(/\u3000/g, ' ')           // 全形空格變半形
+        .replace(/ {2,}/g, ' ')            // 多個空格壓成一個
+        .replace(/\n{3,}/g, '\n\n')        // 多重換行壓成最多兩個
+        .replace(/^[ \n]+|[ \n]+$/g, '');  // 去掉開頭結尾空白
+      html += `<div class="${rowCls}"><dt>${escapeHtml(it.label)}</dt><dd class="${cls}">${escapeHtml(cleanValue)}</dd></div>`;
     }
     html += `</div></section>`;
   }
@@ -2237,16 +2249,18 @@ function toggleSiblings(idx, ev) {
 
   // 把主筆 + siblings 都列出來,依日期由新到舊
   const all = [r, ...r.siblings].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  // 把當前展開的 siblings 暫存到全域,讓 openSiblingDetail 取得
+  window._currentSiblings = all;
   const rowsHtml = all.map((s, ii) => {
     const isMain = ii === 0;
     return `
-      <a href="${s.url}" target="_blank" rel="noopener" class="sib-row${isMain ? ' sib-row-main' : ''}">
+      <button type="button" class="sib-row${isMain ? ' sib-row-main' : ''}" onclick="openSiblingDetail(${ii}, event)">
         <span class="tag tag-${s.type}" style="font-size:9px;padding:2px 6px;">${s.typeLabel}</span>
         <span class="sib-date">${fmtDate(s.date)}</span>
         <span class="sib-jobno">${escapeHtml(s.jobNo || '—')}</span>
         <span class="sib-amount">${s.amount > 0 ? fmtMoney(s.amount) : ''}</span>
-        <span class="sib-link">${s.hasPccUrl ? '採購網 →' : '詳情頁 →'}</span>
-      </a>
+        <span class="sib-link">詳情 →</span>
+      </button>
     `;
   }).join('');
 
@@ -2254,6 +2268,65 @@ function toggleSiblings(idx, ev) {
     <div class="sib-header">同標題歷次招標(依日期由新到舊)</div>
     <div class="sib-list">${rowsHtml}</div>
   `;
+}
+
+// 從 siblings 列表打開詳情面板 — 用 _currentSiblings 取資料
+async function openSiblingDetail(siblingIdx, ev) {
+  ev.stopPropagation();
+  const s = (window._currentSiblings || [])[siblingIdx];
+  if (!s) return;
+
+  const panel = document.getElementById('detail-panel');
+  const overlay = document.getElementById('detail-overlay');
+  const headInfo = document.getElementById('detail-head-info');
+  const body = document.getElementById('detail-body');
+
+  // 標題先顯示
+  headInfo.innerHTML = `
+    <div class="detail-head-eyebrow">
+      <span class="tag tag-${s.type}">${s.typeLabel}</span>
+      <span>${fmtDate(s.date)}</span>
+      ${s.amount > 0 ? `<span>· ${escapeHtml(fmtMoney(s.amount))}</span>` : ''}
+    </div>
+    <div class="detail-head-title">${escapeHtml(s.title)}</div>
+    <div class="detail-head-sub">
+      <span class="unit-name">${escapeHtml(s.unit) || '(機關未填)'}</span>
+    </div>
+  `;
+
+  panel.classList.add('show');
+  overlay.classList.add('show');
+  panel.setAttribute('aria-hidden', 'false');
+
+  const cacheKey = s.unitId + '|' + s.jobNo;
+  if (detailCache[cacheKey]) {
+    renderDetail(body, detailCache[cacheKey], s);
+    return;
+  }
+
+  body.innerHTML = `
+    <div class="detail-loading">
+      <span class="spinner"></span>
+      <div style="margin-top:14px;font-size:13px;">從 g0v 載入完整詳情…</div>
+    </div>
+  `;
+
+  try {
+    const url = `https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(s.unitId)}&job_number=${encodeURIComponent(s.jobNo)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    detailCache[cacheKey] = data;
+    updateCacheBadge();
+    renderDetail(body, data, s);
+  } catch (e) {
+    body.innerHTML = `
+      <div class="detail-error">
+        載入失敗:${escapeHtml(e.message)}<br>
+        可能是網路或 API 暫時忙線,稍後再試。
+      </div>
+    `;
+  }
 }
 
 // ----- History expand -----
