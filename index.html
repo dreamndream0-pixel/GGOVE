@@ -413,6 +413,102 @@ html, body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+
+.sib-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: #fef3c7;
+  color: #92400e;
+  margin-left: auto;
+  letter-spacing: 0.04em;
+}
+
+.tender-siblings {
+  margin: 0 20px 12px;
+  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+}
+.sib-header {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #92400e;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #fde68a;
+}
+.sib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sib-row {
+  display: grid;
+  grid-template-columns: 50px 90px 1fr 100px 70px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  font-size: 12px;
+  text-decoration: none;
+  color: var(--text);
+  border-radius: 3px;
+  background: transparent;
+  transition: background 0.12s ease;
+}
+.sib-row:hover { background: rgba(254, 243, 199, 0.6); }
+.sib-row-main {
+  background: rgba(254, 243, 199, 0.4);
+  font-weight: 500;
+}
+.sib-row-main::before {
+  content: '最新';
+  position: absolute;
+  margin-left: -36px;
+  font-size: 9px;
+  color: #92400e;
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+}
+.sib-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.sib-jobno {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.sib-amount {
+  font-family: var(--mono);
+  font-weight: 500;
+  text-align: right;
+}
+.sib-link {
+  color: var(--accent);
+  font-weight: 500;
+  text-align: right;
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .sib-row {
+    grid-template-columns: 50px 1fr;
+    gap: 6px;
+  }
+  .sib-date, .sib-jobno, .sib-amount, .sib-link {
+    grid-column: 2;
+  }
+  .sib-amount, .sib-link { text-align: left; }
+  .sib-row-main::before { display: none; }
+}
 .history-loading {
   font-size: 13px;
   color: var(--text-soft);
@@ -1072,34 +1168,67 @@ function renderResults() {
     return 0;
   });
 
-  const total = sorted.length;
+  // 合併同標題的標案(同一機關 + 同標題視為「歷次重招」)
+  // 群組 key:title + unit(因為不同機關偶有撞名)
+  const grouped = [];
+  const groupMap = {};
+  for (const r of sorted) {
+    const key = (r.title || '').trim() + '||' + (r.unit || '');
+    if (groupMap[key] != null) {
+      // 已有主筆 → 加入 siblings
+      grouped[groupMap[key]].siblings.push(r);
+    } else {
+      // 第一筆 = 主筆(因為 sorted 已排序,date-desc 時這就是最新)
+      groupMap[key] = grouped.length;
+      grouped.push({ ...r, siblings: [] });
+    }
+  }
+
+  const total = grouped.length;
+  const totalRaw = sorted.length;
   const tenderCount = sorted.filter(r => r.type === 'tender').length;
   const awardCount = sorted.filter(r => r.type === 'award').length;
   const totalAmount = sorted.reduce((s, r) => s + r.amount, 0);
 
-  // 暫存供歷史展開功能使用
-  window._sortedResults = sorted;
+  // 暫存供歷史展開功能使用(用合併後的)
+  window._sortedResults = grouped;
 
   $('s-total').textContent = total.toLocaleString();
   $('s-tender').textContent = tenderCount.toLocaleString();
   $('s-award').textContent = awardCount.toLocaleString();
   $('s-amount').innerHTML = fmtTotalAmount(totalAmount);
 
-  $('result-head-title').textContent = `結果列表 · ${total} 筆`;
+  // 標題顯示「合併 N 筆,原始 M 筆」
+  if (totalRaw > total) {
+    $('result-head-title').textContent = `結果列表 · ${total} 筆(已合併 ${totalRaw - total} 筆同名)`;
+  } else {
+    $('result-head-title').textContent = `結果列表 · ${total} 筆`;
+  }
 
   const body = $('result-body');
-  if (sorted.length === 0) {
+  if (grouped.length === 0) {
     body.innerHTML = `<div class="state"><div class="state-icon">∅</div><div class="state-title">沒有符合的標案</div><div class="state-desc">試試這幾個方向:<br>1. 把「必須包含」減少一個關鍵字<br>2. 「機關名稱」清空試試<br>3. 主要關鍵字改寬一點(例如只輸入「資訊」)<br>4. 把「抓取頁數」調大</div></div>`;
     return;
   }
 
-  body.innerHTML = sorted.map((r, i) => `
+  body.innerHTML = grouped.map((r, i) => {
+    const sibCount = (r.siblings || []).length;
+    const sibBadge = sibCount > 0
+      ? `<span class="sib-badge" title="同名標案歷次重招 ${sibCount} 次">↻ 重招 ${sibCount} 次</span>`
+      : '';
+    const sibBtn = sibCount > 0
+      ? `<span class="link-sep">·</span>
+         <button class="btn-history" onclick="toggleSiblings(${i}, event)">展開歷次招標 (${sibCount + 1}) ▾</button>`
+      : '';
+
+    return `
     <div class="tender-card" data-idx="${i}">
       <div class="tender-card-main" onclick="window.open('${r.url}','_blank')">
         <div class="tender-card-top">
           <span class="tag tag-${r.type}">${r.typeLabel}</span>
           <span class="tender-date">${fmtDate(r.date)}</span>
           ${r.amount > 0 ? `<span class="tender-amount">${fmtMoney(r.amount)}</span>` : ''}
+          ${sibBadge}
         </div>
         <div class="tender-title">${escapeHtml(r.title)}</div>
         <div class="tender-unit">${escapeHtml(r.unit) || '(機關未填)'}</div>
@@ -1115,16 +1244,58 @@ function renderResults() {
           ? `<span class="link-sep">·</span>
              <button class="btn-history" data-idx="${i}" onclick="toggleHistory(${i}, event)">查看本案所有公告 ▾</button>`
           : ''}
+        ${sibBtn}
       </div>
+      <div class="tender-siblings" id="siblings-${i}" style="display:none;"></div>
       <div class="tender-history" id="history-${i}" style="display:none;"></div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({
     '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
   }[c]));
+}
+
+// ----- Siblings (歷次重招) -----
+function toggleSiblings(idx, ev) {
+  ev.stopPropagation();
+  const r = (window._sortedResults || [])[idx];
+  if (!r) return;
+  const box = document.getElementById('siblings-' + idx);
+  const btn = ev.currentTarget;
+  if (!box) return;
+
+  if (box.style.display !== 'none') {
+    box.style.display = 'none';
+    btn.innerHTML = `展開歷次招標 (${r.siblings.length + 1}) ▾`;
+    return;
+  }
+
+  box.style.display = 'block';
+  btn.innerHTML = '收起 ▴';
+
+  // 把主筆 + siblings 都列出來,依日期由新到舊
+  const all = [r, ...r.siblings].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const rowsHtml = all.map((s, ii) => {
+    const isMain = ii === 0;
+    return `
+      <a href="${s.url}" target="_blank" rel="noopener" class="sib-row${isMain ? ' sib-row-main' : ''}">
+        <span class="tag tag-${s.type}" style="font-size:9px;padding:2px 6px;">${s.typeLabel}</span>
+        <span class="sib-date">${fmtDate(s.date)}</span>
+        <span class="sib-jobno">${escapeHtml(s.jobNo || '—')}</span>
+        <span class="sib-amount">${s.amount > 0 ? fmtMoney(s.amount) : ''}</span>
+        <span class="sib-link">${s.hasPccUrl ? '採購網 →' : '詳情頁 →'}</span>
+      </a>
+    `;
+  }).join('');
+
+  box.innerHTML = `
+    <div class="sib-header">同標題歷次招標(依日期由新到舊)</div>
+    <div class="sib-list">${rowsHtml}</div>
+  `;
 }
 
 // ----- History expand -----
