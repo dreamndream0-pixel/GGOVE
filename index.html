@@ -1084,6 +1084,100 @@ html, body {
   line-height: 1.6;
 }
 
+/* 本案所有公告:時間軸 */
+.detail-timeline {
+  padding: 18px 0 14px;
+}
+.detail-timeline .detail-section-title {
+  padding: 0 20px 12px;
+  margin-bottom: 0;
+}
+.tl-list {
+  display: flex;
+  flex-direction: column;
+}
+.tl-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 18px;
+  gap: 8px;
+  padding: 14px 20px;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s ease;
+  position: relative;
+}
+.tl-row:last-child { border-bottom: none; }
+.tl-row:hover { background: var(--surface-soft); }
+.tl-row.tl-latest { background: rgba(254, 243, 199, 0.35); }
+.tl-row.tl-latest:hover { background: rgba(254, 243, 199, 0.55); }
+.tl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+.tl-content {
+  min-width: 0;
+}
+.tl-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.tl-type {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.tl-tag-latest {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  background: #fef3c7;
+  color: #78350f;
+  border-radius: 3px;
+}
+.tl-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+.tl-date {
+  font-family: var(--mono);
+  color: var(--text-soft);
+}
+.tl-amount {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--accent);
+}
+.tl-company {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--award);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tl-arrow {
+  color: var(--text-faint);
+  font-size: 13px;
+  align-self: center;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.tl-row:hover .tl-arrow {
+  opacity: 1;
+  color: var(--accent);
+}
+
 .detail-loading {
   text-align: center;
   padding: 80px 20px;
@@ -1996,12 +2090,65 @@ function renderDetail(body, data, mainR) {
 
   let html = heroHtml;
 
-  // 多筆公告提示
+  // 本案所有公告(時間軸)
   if (records.length > 1) {
+    const tlRows = sorted.map((rec, idx) => {
+      const b = rec.brief || {};
+      const t = b.type || '公告';
+      const tk = classifyType(t);
+      const dotColors = {
+        tender: 'var(--tender)', award: 'var(--award)',
+        rental: 'var(--rental)', sell: 'var(--sell)',
+        amend: 'var(--amend)', other: 'var(--other)'
+      };
+      const dotColor = dotColors[tk] || 'var(--text-faint)';
+      const isLatest = idx === 0;
+
+      // 採購網直連 URL
+      const fn = rec.filename || '';
+      let url = '';
+      if (fn && rec.date) {
+        url = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(fn)}.xml`;
+      }
+
+      // 金額
+      const amt = extractAmount(rec, b);
+      const amtStr = amt > 0 ? fmtMoney(amt) : '';
+
+      // 廠商(決標時)
+      const companies = extractCompanies(rec, b);
+      let compStr = '';
+      if (companies.length > 0) {
+        const disp = companies.length <= 2 ? companies.join('、') : companies.slice(0,2).join('、') + ` 等 ${companies.length} 家`;
+        compStr = `<div class="tl-company" title="${escapeHtml(companies.join('、'))}">得標:${escapeHtml(disp)}</div>`;
+      }
+
+      return `
+        <a href="${url || '#'}" target="${url ? '_blank' : '_self'}" rel="noopener" class="tl-row${isLatest ? ' tl-latest' : ''}">
+          <div class="tl-dot" style="background:${dotColor};"></div>
+          <div class="tl-content">
+            <div class="tl-top">
+              <span class="tl-type">${escapeHtml(t)}</span>
+              ${isLatest ? '<span class="tl-tag-latest">最新</span>' : ''}
+            </div>
+            <div class="tl-meta">
+              <span class="tl-date">${fmtDate(String(rec.date))}</span>
+              ${amtStr ? `<span class="tl-amount">${amtStr}</span>` : ''}
+            </div>
+            ${compStr}
+          </div>
+          ${url ? '<div class="tl-arrow">→</div>' : ''}
+        </a>
+      `;
+    }).join('');
+
     html += `
-      <div class="detail-multi-notice">
-        💡 本案共 <strong>${records.length}</strong> 筆公告,目前顯示最新一筆(${escapeHtml(latest.brief && latest.brief.type || '')})。
-      </div>
+      <section class="detail-section detail-timeline">
+        <div class="detail-section-title">
+          <span class="section-icon">🗂</span> 本案所有公告 · ${records.length} 筆
+        </div>
+        <div class="tl-list">${tlRows}</div>
+      </section>
     `;
   }
 
