@@ -1129,14 +1129,21 @@ html, body {
 }
 .tl-row {
   display: grid;
-  grid-template-columns: 28px 1fr 18px;
+  grid-template-columns: 28px 1fr 50px;
   gap: 8px;
   padding: 14px 20px;
   text-decoration: none;
   color: inherit;
+  border: none;
+  background: transparent;
   border-bottom: 1px solid var(--border);
   transition: background 0.12s ease;
   position: relative;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  width: 100%;
 }
 .tl-row:last-child { border-bottom: none; }
 .tl-row:hover { background: var(--surface-soft); }
@@ -1199,10 +1206,12 @@ html, body {
 }
 .tl-arrow {
   color: var(--text-faint);
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 500;
   align-self: center;
-  opacity: 0;
-  transition: opacity 0.12s ease;
+  text-align: right;
+  opacity: 0.4;
+  transition: all 0.12s ease;
 }
 .tl-row:hover .tl-arrow {
   opacity: 1;
@@ -2081,48 +2090,67 @@ function renderDetail(body, data, mainR) {
     }
   }
 
-  // 分組所需欄位
-  const groups = {
-    '機關資料': [],
-    '採購資料': [],
-    '招標資料': [],
-    '決標資料': [],
-    '其他資料': [],
+  // 白名單:只顯示這些重要欄位(label 是冒號後面的部分)
+  // 用模糊比對,只要 label 包含這些關鍵字就顯示
+  const importantFields = {
+    '🏆 決標資訊': [
+      '決標廠商', '廠商名稱', '廠商代碼', '統一編號',
+      '決標金額', '預算金額', '底價金額', '底價', '總決標金額',
+      '決標日期', '決標方式',
+    ],
+    '📋 招標資訊': [
+      '標案案號', '標案名稱', '採購名稱',
+      '採購類別', '標的分類',
+      '招標方式', '採購方式', '決標方式',
+      '機關名稱', '單位名稱', '採購單位',
+      '機關地址',
+      '聯絡人', '聯絡電話', '傳真號碼', '電子郵件信箱',
+      '公告日期', '截止投標', '截止收件', '截標時間',
+      '開標時間', '開標日期',
+      '預算或預估', '公告金額',
+    ],
+    '📝 資格與說明': [
+      '廠商資格', '投標資格', '基本資格',
+      '附加說明', '附註',
+    ],
   };
+
+  // 從 detail 抽出白名單內的欄位
+  const sections = {};
+  for (const secName of Object.keys(importantFields)) {
+    sections[secName] = [];
+  }
 
   for (const k of Object.keys(detail)) {
     const v = detail[k];
     if (v == null || v === '') continue;
-    if (k === 'type' || k === 'url') continue;
+    if (k === 'type' || k === 'url' || k === 'pkPmsMain') continue;
 
+    // 取冒號後的 label
     const colonIdx = k.indexOf(':');
-    let prefix = '其他資料', label = k;
-    if (colonIdx > 0) {
-      const p = k.substring(0, colonIdx);
-      label = k.substring(colonIdx + 1);
-      if (groups[p] != null) prefix = p;
-      else if (p.indexOf('機關') !== -1) prefix = '機關資料';
-      else if (p.indexOf('採購') !== -1) prefix = '採購資料';
-      else if (p.indexOf('招標') !== -1 || p.indexOf('投標') !== -1) prefix = '招標資料';
-      else if (p.indexOf('決標') !== -1 || p.indexOf('得標') !== -1) prefix = '決標資料';
-      else prefix = '其他資料';
+    const label = colonIdx > 0 ? k.substring(colonIdx + 1) : k;
+
+    // 檢查是否在白名單中
+    for (const secName of Object.keys(importantFields)) {
+      const keywords = importantFields[secName];
+      const matched = keywords.some(kw => label.indexOf(kw) !== -1);
+      if (matched) {
+        // 過濾掉「是否」類的布林欄位(「預算金額是否公開」等)
+        if (label.indexOf('是否') !== -1) continue;
+        sections[secName].push({ label: label, value: String(v) });
+        break; // 找到就不再往下個 section 對
+      }
     }
-
-    groups[prefix].push({ label: label, value: String(v) });
   }
-
-  const sectionIcons = {
-    '機關資料': '🏛',
-    '採購資料': '📋',
-    '招標資料': '📝',
-    '決標資料': '🏆',
-    '其他資料': '📎',
-  };
 
   let html = heroHtml;
 
   // 本案所有公告(時間軸)
   if (records.length > 1) {
+    // 暫存當前 records 供 openTimelineDetail 使用
+    window._timelineRecords = sorted;
+    window._timelineMainR = mainR;
+
     const tlRows = sorted.map((rec, idx) => {
       const b = rec.brief || {};
       const t = b.type || '公告';
@@ -2134,13 +2162,6 @@ function renderDetail(body, data, mainR) {
       };
       const dotColor = dotColors[tk] || 'var(--text-faint)';
       const isLatest = idx === 0;
-
-      // 採購網直連 URL
-      const fn = rec.filename || '';
-      let url = '';
-      if (fn && rec.date) {
-        url = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(fn)}.xml`;
-      }
 
       // 金額
       const amt = extractAmount(rec, b);
@@ -2155,7 +2176,7 @@ function renderDetail(body, data, mainR) {
       }
 
       return `
-        <a href="${url || '#'}" target="${url ? '_blank' : '_self'}" rel="noopener" class="tl-row${isLatest ? ' tl-latest' : ''}">
+        <button type="button" class="tl-row${isLatest ? ' tl-latest' : ''}" onclick="openTimelineDetail(${idx}, event)">
           <div class="tl-dot" style="background:${dotColor};"></div>
           <div class="tl-content">
             <div class="tl-top">
@@ -2168,8 +2189,8 @@ function renderDetail(body, data, mainR) {
             </div>
             ${compStr}
           </div>
-          ${url ? '<div class="tl-arrow">→</div>' : ''}
-        </a>
+          <div class="tl-arrow">詳情 →</div>
+        </button>
       `;
     }).join('');
 
@@ -2183,32 +2204,30 @@ function renderDetail(body, data, mainR) {
     `;
   }
 
-  for (const groupName of Object.keys(groups)) {
-    const items = groups[groupName];
+  for (const secName of Object.keys(sections)) {
+    const items = sections[secName];
     if (items.length === 0) continue;
 
     html += `
       <section class="detail-section">
         <div class="detail-section-title">
-          <span class="section-icon">${sectionIcons[groupName] || '·'}</span> ${groupName}
+          <span class="section-icon">${secName.substring(0, 2)}</span> ${secName.substring(2).trim()}
         </div>
         <div class="detail-grid">
     `;
     for (const it of items) {
       let cls = '';
-      if (it.label.indexOf('金額') !== -1) cls = 'amount';
-      else if (it.label.indexOf('得標廠商') !== -1 || it.label.indexOf('廠商名稱') !== -1) cls = 'company';
-      else if (it.label.indexOf('時間') !== -1) cls = 'time';
-      // 標籤超過 10 字視為長標籤,改成上下排列
+      if (it.label.indexOf('金額') !== -1 || it.label.indexOf('底價') !== -1) cls = 'amount';
+      else if (it.label.indexOf('廠商') !== -1 || it.label.indexOf('廠商名稱') !== -1) cls = 'company';
+      else if (it.label.indexOf('時間') !== -1 || it.label.indexOf('日期') !== -1) cls = 'time';
       const isLong = it.label.length > 10 || it.value.length > 100;
       const rowCls = isLong ? 'detail-grid-row long' : 'detail-grid-row';
-      // 清理值的多餘空白:移除 tab、壓縮多重空格、壓縮多重換行
       const cleanValue = String(it.value)
-        .replace(/\t/g, ' ')               // tab 變空格
-        .replace(/\u3000/g, ' ')           // 全形空格變半形
-        .replace(/ {2,}/g, ' ')            // 多個空格壓成一個
-        .replace(/\n{3,}/g, '\n\n')        // 多重換行壓成最多兩個
-        .replace(/^[ \n]+|[ \n]+$/g, '');  // 去掉開頭結尾空白
+        .replace(/\t/g, ' ')
+        .replace(/\u3000/g, ' ')
+        .replace(/ {2,}/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/^[ \n]+|[ \n]+$/g, '');
       html += `<div class="${rowCls}"><dt>${escapeHtml(it.label)}</dt><dd class="${cls}">${escapeHtml(cleanValue)}</dd></div>`;
     }
     html += `</div></section>`;
@@ -2268,6 +2287,49 @@ function toggleSiblings(idx, ev) {
     <div class="sib-header">同標題歷次招標(依日期由新到舊)</div>
     <div class="sib-list">${rowsHtml}</div>
   `;
+}
+
+// 從「本案所有公告」時間軸打開詳情面板 — 顯示該筆公告的完整 detail
+async function openTimelineDetail(tlIdx, ev) {
+  ev.stopPropagation();
+  const rec = (window._timelineRecords || [])[tlIdx];
+  const mainR = window._timelineMainR;
+  if (!rec || !mainR) return;
+
+  const panel = document.getElementById('detail-panel');
+  const overlay = document.getElementById('detail-overlay');
+  const headInfo = document.getElementById('detail-head-info');
+  const body = document.getElementById('detail-body');
+
+  const brief = rec.brief || {};
+  const t = brief.type || '公告';
+
+  headInfo.innerHTML = `
+    <div class="detail-head-eyebrow">
+      <span class="tag tag-${classifyType(t)}">${escapeHtml(t)}</span>
+      <span>${fmtDate(String(rec.date))}</span>
+    </div>
+    <div class="detail-head-title">${escapeHtml(brief.title || mainR.title)}</div>
+    <div class="detail-head-sub">
+      <span class="unit-name">${escapeHtml(mainR.unit) || '(機關未填)'}</span>
+    </div>
+  `;
+
+  panel.classList.add('show');
+  overlay.classList.add('show');
+  panel.setAttribute('aria-hidden', 'false');
+
+  // 這筆 record 的 detail 已經在手上(從 detailCache 或 tender API 取得的 data.records 中)
+  // 直接用 rec.detail 渲染，不用再打 API
+  const detail = rec.detail || {};
+  if (Object.keys(detail).length === 0) {
+    body.innerHTML = '<div class="detail-error">這筆公告沒有詳細資料</div>';
+    return;
+  }
+
+  // 用 renderDetail 的邏輯，但直接從這筆 record 渲染
+  const fakeData = { records: [rec] };
+  renderDetail(body, fakeData, mainR);
 }
 
 // 從 siblings 列表打開詳情面板 — 用 _currentSiblings 取資料
