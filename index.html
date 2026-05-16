@@ -371,15 +371,27 @@ html, body {
 .tender-card {
   border-bottom: 1px solid var(--border);
   transition: background 0.12s ease;
+  position: relative;
+}
+.tender-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background 0.12s ease;
 }
 .tender-card:hover { background: var(--surface-soft); }
+.tender-card:hover::before { background: var(--accent); }
 .tender-card:last-child { border-bottom: none; }
 .tender-card-main {
-  padding: 18px 20px 12px;
+  padding: 18px 22px 14px;
   cursor: pointer;
 }
 .tender-card-links {
-  padding: 0 20px 14px;
+  padding: 0 22px 14px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -708,45 +720,54 @@ html, body {
   vertical-align: middle;
 }
 
-.tender-times {
-  margin-top: 8px;
-  font-size: 12px;
+.tender-meta-row {
+  margin-top: 10px;
   display: flex;
-  gap: 14px;
+  gap: 16px;
   flex-wrap: wrap;
   align-items: center;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
 }
-.times-loading {
+.meta-loading {
   color: var(--text-faint);
+  font-size: 11px;
   font-style: italic;
+}
+.meta-na {
+  color: var(--text-faint);
   font-size: 11px;
 }
-.time-item {
+.meta-item {
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  align-items: baseline;
+  gap: 6px;
 }
-.time-label {
+.meta-label {
   font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 9px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-faint);
-  font-weight: 500;
+  font-weight: 600;
 }
-.time-value {
+.meta-value {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--text);
   font-weight: 500;
 }
-.time-value.urgent {
+.meta-value.urgent {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
 }
-.time-na {
-  color: var(--text-faint);
+.meta-value.urgent::after {
+  content: ' ⚠';
+  font-family: var(--sans);
   font-size: 11px;
+}
+.meta-value.meta-amount {
+  color: var(--award);
 }
 
 /* ============ Empty / Loading ============ */
@@ -811,10 +832,12 @@ html, body {
 .detail-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(28, 28, 26, 0.16);
+  background: rgba(28, 28, 26, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.25s ease;
   z-index: 200;
 }
 .detail-overlay.show {
@@ -825,14 +848,14 @@ html, body {
   position: fixed;
   top: 0;
   right: 0;
-  width: 460px;
+  width: 520px;
   max-width: calc(100vw - 32px);
   height: 100vh;
-  background: var(--surface);
+  background: var(--bg);
   border-left: 1px solid var(--border);
-  box-shadow: -8px 0 32px rgba(28, 28, 26, 0.08);
+  box-shadow: -12px 0 48px rgba(28, 28, 26, 0.12);
   transform: translateX(100%);
-  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0.24, 1);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0.24, 1);
   z-index: 201;
   display: flex;
   flex-direction: column;
@@ -840,94 +863,203 @@ html, body {
 .detail-panel.show { transform: translateX(0); }
 
 .detail-head {
-  padding: 18px 22px;
+  padding: 24px 28px 20px;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  background: var(--surface-soft);
+  position: relative;
+}
+.detail-head::after {
+  content: '';
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--border-strong) 50%, transparent 100%);
 }
 .detail-head-info {
   flex: 1;
   min-width: 0;
 }
-.detail-head-title {
-  font-family: var(--serif);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.35;
-  margin-bottom: 6px;
-  color: var(--text);
-}
-.detail-head-sub {
-  font-size: 12px;
-  color: var(--text-soft);
+.detail-head-eyebrow {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
   align-items: center;
-}
-.detail-close {
-  border: none;
-  background: transparent;
-  font-size: 18px;
-  cursor: pointer;
-  color: var(--text-soft);
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  transition: all 0.12s ease;
-  flex-shrink: 0;
-}
-.detail-close:hover {
-  background: var(--surface);
-  color: var(--text);
-}
-
-.detail-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 22px 22px;
-}
-.detail-section {
-  margin-top: 22px;
-}
-.detail-section-title {
+  margin-bottom: 8px;
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
+}
+.detail-head-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.35;
   margin-bottom: 10px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.detail-head-sub {
+  font-size: 13px;
+  color: var(--text-soft);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  line-height: 1.55;
+}
+.detail-head-sub .unit-name {
+  font-weight: 500;
+  color: var(--text);
+}
+.detail-close {
+  border: none;
+  background: var(--surface);
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-soft);
+  padding: 8px 12px;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.detail-close:hover {
+  background: var(--text);
+  color: var(--surface);
+  border-color: var(--text);
+  transform: rotate(90deg);
+}
+
+.detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 28px 22px;
+}
+.detail-body::-webkit-scrollbar { width: 8px; }
+.detail-body::-webkit-scrollbar-track { background: transparent; }
+.detail-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+.detail-body::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+.detail-section {
+  margin-top: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.detail-section-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-bottom: 14px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.detail-section-title .section-icon {
+  font-size: 14px;
+  filter: grayscale(0.3);
 }
 .detail-grid {
   display: grid;
-  grid-template-columns: 100px 1fr;
-  gap: 8px 14px;
+  grid-template-columns: 110px 1fr;
+  gap: 12px 18px;
   font-size: 13px;
 }
 .detail-grid dt {
   color: var(--text-faint);
-  font-size: 12px;
-  padding-top: 2px;
+  font-size: 11px;
+  padding-top: 3px;
+  letter-spacing: 0.02em;
 }
 .detail-grid dd {
   color: var(--text);
   margin: 0;
   word-break: break-word;
   white-space: pre-wrap;
+  line-height: 1.6;
 }
 .detail-grid dd.amount {
   font-family: var(--mono);
   font-weight: 600;
   color: var(--accent);
-  font-size: 14px;
+  font-size: 15px;
+  letter-spacing: -0.01em;
 }
 .detail-grid dd.company {
   color: var(--award);
   font-weight: 500;
+}
+.detail-grid dd.time {
+  font-family: var(--mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.detail-hero {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.detail-hero-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.detail-hero-item.urgent {
+  background: var(--accent-soft);
+  border-color: #fecaca;
+}
+.detail-hero-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+.detail-hero-value {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.detail-hero-item.urgent .detail-hero-value {
+  color: var(--accent);
+}
+
+.detail-multi-notice {
+  margin-top: 22px;
+  padding: 12px 16px;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #78350f;
+  line-height: 1.6;
 }
 
 .detail-loading {
@@ -937,38 +1069,46 @@ html, body {
 }
 .detail-error {
   margin: 40px 0;
-  padding: 20px;
+  padding: 24px;
   background: var(--accent-soft);
-  border-radius: var(--radius-sm);
+  border: 1px solid #fecaca;
+  border-radius: 8px;
   color: var(--accent);
   font-size: 13px;
   text-align: center;
+  line-height: 1.7;
 }
 
 .detail-actions {
-  padding: 16px 22px;
+  padding: 18px 28px;
   border-top: 1px solid var(--border);
   display: flex;
-  gap: 8px;
-  background: var(--surface-soft);
+  gap: 10px;
+  background: var(--surface);
+  box-shadow: 0 -4px 16px rgba(28, 28, 26, 0.04);
 }
 .detail-actions a {
   flex: 1;
   text-align: center;
-  padding: 10px 14px;
+  padding: 11px 14px;
   background: var(--text);
   color: var(--surface);
-  border-radius: var(--radius-sm);
+  border-radius: 6px;
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
-  transition: opacity 0.12s ease;
+  transition: all 0.15s ease;
+  letter-spacing: 0.02em;
 }
-.detail-actions a:hover { opacity: 0.85; }
+.detail-actions a:hover { background: #000; transform: translateY(-1px); }
 .detail-actions a.secondary {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
+}
+.detail-actions a.secondary:hover {
+  background: var(--surface-soft);
+  border-color: var(--border-strong);
 }
 
 .btn-detail {
@@ -1485,7 +1625,7 @@ function renderResults() {
 
     return `
     <div class="tender-card" data-idx="${i}">
-      <div class="tender-card-main" onclick="window.open('${r.url}','_blank')">
+      <div class="tender-card-main" onclick="openDetail(${i}, event)">
         <div class="tender-card-top">
           <span class="tag tag-${r.type}">${r.typeLabel}</span>
           <span class="tender-date">${fmtDate(r.date)}</span>
@@ -1494,27 +1634,18 @@ function renderResults() {
         </div>
         <div class="tender-title">${escapeHtml(r.title)}</div>
         <div class="tender-unit">${escapeHtml(r.unit) || '(機關未填)'}</div>
+        <div class="tender-meta-row" id="meta-${i}">
+          <span class="meta-loading">載入截標 / 開標 / 公告金額…</span>
+        </div>
       </div>
-      <div class="tender-card-links">
-        ${r.hasPccUrl 
-          ? `<a href="${r.url}" target="_blank" rel="noopener">採購網原始公告 →</a>
-             <span class="link-sep">·</span>
-             <a href="${r.altUrl}" target="_blank" rel="noopener" class="link-soft">查看資料整理</a>`
-          : `<a href="${r.altUrl}" target="_blank" rel="noopener">查看資料整理 →</a>`
-        }
-        ${r.unitId && r.jobNo
-          ? `<span class="link-sep">·</span>
-             <button class="btn-detail" onclick="openDetail(${i}, event)">📋 看詳情</button>
-             <span class="link-sep">·</span>
-             <button class="btn-history" data-idx="${i}" onclick="toggleHistory(${i}, event)">查看本案所有公告 ▾</button>`
-          : ''}
-        ${sibBtn}
-      </div>
+      ${sibBtn ? `<div class="tender-card-links">${sibBtn}</div>` : ''}
       <div class="tender-siblings" id="siblings-${i}" style="display:none;"></div>
-      <div class="tender-history" id="history-${i}" style="display:none;"></div>
     </div>
   `;
   }).join('');
+
+  // 自動背景抓截標/開標/金額(已有快取的會秒填)
+  fetchMetaInBackground(grouped);
 }
 
 function escapeHtml(s) {
@@ -1524,10 +1655,6 @@ function escapeHtml(s) {
 }
 
 // ----- 背景抓截標/開標時間(每張卡片) -----
-const timesCache = {};        // 快取已抓過的標案時間
-let timesBgFailures = 0;       // 連續失敗計數
-const TIMES_MAX_FAILURES = 3;  // 熔斷閾值
-
 function fmtTimeStr(raw) {
   // 政府格式可能是 "115/05/21 09:30" 或 "11505210930"
   if (!raw) return '';
@@ -1544,51 +1671,116 @@ function fmtTimeStr(raw) {
   return raw;
 }
 
-// 判斷是不是即將截標(7 天內)
-function isUrgent(timeStr) {
-  if (!timeStr) return false;
-  // 嘗試解析 "115/05/21 09:30" 民國年
-  const m = timeStr.match(/^(\d{3})\/(\d{2})\/(\d{2})/);
-  if (!m) return false;
-  const year = parseInt(m[1]) + 1911;
-  const month = parseInt(m[2]);
-  const day = parseInt(m[3]);
-  const target = new Date(year, month - 1, day);
-  const now = new Date();
-  const diffDays = (target - now) / 86400000;
-  return diffDays >= 0 && diffDays <= 7;
-}
+// ----- 詳情側邊面板 -----
+const detailCache = {};         // 快取已載入過的詳情
+let metaBgFailures = 0;
+const META_MAX_FAILURES = 3;
 
-function extractTimes(record) {
-  // 從 tender API 的 record 取截標/開標時間
-  const detail = record.detail || {};
-  let deadline = '', openTime = '';
+// 從 tender API 回傳資料抽出截標/開標/公告金額
+function extractMetaFromTender(data) {
+  const records = data.records || [];
+  if (records.length === 0) return {};
+  // 取最新一筆
+  const sorted = [...records].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const latest = sorted[0];
+  const detail = latest.detail || {};
+
+  let deadline = '', openTime = '', announceAmount = '';
   for (const k of Object.keys(detail)) {
     const v = detail[k];
     if (!v) continue;
     if (k.indexOf('截止投標') !== -1 || k.indexOf('截標時間') !== -1) deadline = String(v);
     else if (k.indexOf('開標時間') !== -1) openTime = String(v);
+    else if (k.indexOf('預算金額') !== -1 || k.indexOf('公告金額') !== -1) announceAmount = String(v);
   }
-  return { deadline: fmtTimeStr(deadline), openTime: fmtTimeStr(openTime) };
+  // 若沒有明確「公告金額」/「預算金額」,試試決標總金額
+  if (!announceAmount) {
+    for (const k of Object.keys(detail)) {
+      if (k.indexOf('決標金額') !== -1 || k.indexOf('總決標金額') !== -1) {
+        announceAmount = String(detail[k]); break;
+      }
+    }
+  }
+  return {
+    deadline: fmtTimeStr(deadline),
+    openTime: fmtTimeStr(openTime),
+    announceAmount: announceAmount,
+  };
 }
 
-function renderTimes(idx, deadline, openTime) {
-  const el = document.getElementById('times-' + idx);
+function isUrgentTime(timeStr) {
+  if (!timeStr) return false;
+  const m = timeStr.match(/^(\d{3})\/(\d{2})\/(\d{2})/);
+  if (!m) return false;
+  const year = parseInt(m[1]) + 1911;
+  const target = new Date(year, parseInt(m[2]) - 1, parseInt(m[3]));
+  const now = new Date();
+  const diffDays = (target - now) / 86400000;
+  return diffDays >= 0 && diffDays <= 7;
+}
+
+function renderCardMeta(idx, meta) {
+  const el = document.getElementById('meta-' + idx);
   if (!el) return;
-  if (!deadline && !openTime) {
-    el.innerHTML = '<span class="time-na">— 無公開時間資訊</span>';
-    return;
+  const items = [];
+  if (meta.deadline) {
+    const cls = isUrgentTime(meta.deadline) ? 'meta-value urgent' : 'meta-value';
+    items.push(`<span class="meta-item"><span class="meta-label">截標</span><span class="${cls}">${escapeHtml(meta.deadline)}</span></span>`);
   }
-  const dlClass = isUrgent(deadline) ? 'time-value urgent' : 'time-value';
-  const otClass = isUrgent(openTime) ? 'time-value urgent' : 'time-value';
-  el.innerHTML = `
-    ${deadline ? `<span class="time-item"><span class="time-label">截標</span><span class="${dlClass}">${escapeHtml(deadline)}</span></span>` : ''}
-    ${openTime ? `<span class="time-item"><span class="time-label">開標</span><span class="${otClass}">${escapeHtml(openTime)}</span></span>` : ''}
-  `;
+  if (meta.openTime) {
+    const cls = isUrgentTime(meta.openTime) ? 'meta-value urgent' : 'meta-value';
+    items.push(`<span class="meta-item"><span class="meta-label">開標</span><span class="${cls}">${escapeHtml(meta.openTime)}</span></span>`);
+  }
+  if (meta.announceAmount) {
+    items.push(`<span class="meta-item"><span class="meta-label">公告金額</span><span class="meta-value meta-amount">${escapeHtml(meta.announceAmount)}</span></span>`);
+  }
+  if (items.length === 0) {
+    el.innerHTML = '<span class="meta-na">— 無時程或金額資訊</span>';
+  } else {
+    el.innerHTML = items.join('');
+  }
 }
 
-// ----- 詳情側邊面板 -----
-const detailCache = {};         // 快取已載入過的詳情
+async function fetchMetaInBackground(grouped) {
+  metaBgFailures = 0;
+  for (let i = 0; i < grouped.length; i++) {
+    const r = grouped[i];
+    const el = document.getElementById('meta-' + i);
+    if (!el) continue; // 卡片可能已被新搜尋取代
+
+    if (!r.unitId || !r.jobNo) {
+      el.innerHTML = '<span class="meta-na">— 無 API 索引</span>';
+      continue;
+    }
+
+    const cacheKey = r.unitId + '|' + r.jobNo;
+    if (detailCache[cacheKey]) {
+      renderCardMeta(i, extractMetaFromTender(detailCache[cacheKey]));
+      continue;
+    }
+
+    if (metaBgFailures >= META_MAX_FAILURES) {
+      el.innerHTML = '<span class="meta-na">— 暫停載入(請求過密,點卡片仍可查詳情)</span>';
+      continue;
+    }
+
+    try {
+      const url = `https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      detailCache[cacheKey] = data; // 連帶把詳情面板也快取了
+      updateCacheBadge();
+      renderCardMeta(i, extractMetaFromTender(data));
+      metaBgFailures = 0;
+    } catch (e) {
+      metaBgFailures++;
+      el.innerHTML = '<span class="meta-na">— 載入失敗</span>';
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 150));
+  }
+}
 
 function updateCacheBadge() {
   const n = Object.keys(detailCache).length;
@@ -1620,10 +1812,14 @@ async function openDetail(idx, ev) {
 
   // 標題先顯示(用主卡資訊)
   headInfo.innerHTML = `
+    <div class="detail-head-eyebrow">
+      <span class="tag tag-${r.type}">${r.typeLabel}</span>
+      <span>${fmtDate(r.date)}</span>
+      ${r.amount > 0 ? `<span>· ${escapeHtml(fmtMoney(r.amount))}</span>` : ''}
+    </div>
     <div class="detail-head-title">${escapeHtml(r.title)}</div>
     <div class="detail-head-sub">
-      <span class="tag tag-${r.type}">${r.typeLabel}</span>
-      <span>${escapeHtml(r.unit) || '(機關未填)'}</span>
+      <span class="unit-name">${escapeHtml(r.unit) || '(機關未填)'}</span>
     </div>
   `;
 
@@ -1676,10 +1872,44 @@ function renderDetail(body, data, mainR) {
   const sorted = [...records].sort((a, b) => String(b.date).localeCompare(String(a.date)));
   const latest = sorted[0];
   const detail = latest.detail || {};
-  const brief = latest.brief || {};
 
-  // 分組所需欄位 — 從 detail 中關鍵字匹配
-  // detail key 通常是 "機關資料:XXX" / "採購資料:XXX" / "決標資料:XXX" 等
+  // 抽出關鍵時間/金額做成 hero
+  const meta = extractMetaFromTender(data);
+  let heroHtml = '';
+  if (meta.deadline || meta.openTime || meta.announceAmount) {
+    const items = [];
+    if (meta.deadline) {
+      const urg = isUrgentTime(meta.deadline);
+      items.push(`
+        <div class="detail-hero-item${urg ? ' urgent' : ''}">
+          <div class="detail-hero-label">截止投標</div>
+          <div class="detail-hero-value">${escapeHtml(meta.deadline)}</div>
+        </div>
+      `);
+    }
+    if (meta.openTime) {
+      const urg = isUrgentTime(meta.openTime);
+      items.push(`
+        <div class="detail-hero-item${urg ? ' urgent' : ''}">
+          <div class="detail-hero-label">開標時間</div>
+          <div class="detail-hero-value">${escapeHtml(meta.openTime)}</div>
+        </div>
+      `);
+    }
+    if (meta.announceAmount) {
+      items.push(`
+        <div class="detail-hero-item">
+          <div class="detail-hero-label">公告金額</div>
+          <div class="detail-hero-value">${escapeHtml(meta.announceAmount)}</div>
+        </div>
+      `);
+    }
+    if (items.length > 0) {
+      heroHtml = `<div class="detail-hero">${items.join('')}</div>`;
+    }
+  }
+
+  // 分組所需欄位
   const groups = {
     '機關資料': [],
     '採購資料': [],
@@ -1691,10 +1921,8 @@ function renderDetail(body, data, mainR) {
   for (const k of Object.keys(detail)) {
     const v = detail[k];
     if (v == null || v === '') continue;
-    // 過濾掉一些雜訊 key
     if (k === 'type' || k === 'url') continue;
 
-    // 找出 prefix(冒號前)
     const colonIdx = k.indexOf(':');
     let prefix = '其他資料', label = k;
     if (colonIdx > 0) {
@@ -1711,52 +1939,52 @@ function renderDetail(body, data, mainR) {
     groups[prefix].push({ label: label, value: String(v) });
   }
 
-  // 順序顯示各組
   const sectionIcons = {
-    '機關資料': '🏛️',
+    '機關資料': '🏛',
     '採購資料': '📋',
     '招標資料': '📝',
     '決標資料': '🏆',
     '其他資料': '📎',
   };
 
-  let html = '';
+  let html = heroHtml;
+
+  // 多筆公告提示
+  if (records.length > 1) {
+    html += `
+      <div class="detail-multi-notice">
+        💡 本案共 <strong>${records.length}</strong> 筆公告,目前顯示最新一筆(${escapeHtml(latest.brief && latest.brief.type || '')})。
+      </div>
+    `;
+  }
+
   for (const groupName of Object.keys(groups)) {
     const items = groups[groupName];
     if (items.length === 0) continue;
 
     html += `
       <section class="detail-section">
-        <div class="detail-section-title">${sectionIcons[groupName] || '·'} ${groupName}</div>
+        <div class="detail-section-title">
+          <span class="section-icon">${sectionIcons[groupName] || '·'}</span> ${groupName}
+        </div>
         <dl class="detail-grid">
     `;
     for (const it of items) {
-      // 自動判斷金額/廠商欄位給特殊 class
       let cls = '';
       if (it.label.indexOf('金額') !== -1) cls = 'amount';
       else if (it.label.indexOf('得標廠商') !== -1 || it.label.indexOf('廠商名稱') !== -1) cls = 'company';
+      else if (it.label.indexOf('時間') !== -1) cls = 'time';
       html += `<dt>${escapeHtml(it.label)}</dt><dd class="${cls}">${escapeHtml(it.value)}</dd>`;
     }
     html += `</dl></section>`;
   }
 
-  // 底部按鈕
   html += `
     <div class="detail-actions">
       <a href="${mainR.url}" target="_blank" rel="noopener">採購網原始公告 →</a>
       <a href="${mainR.altUrl}" target="_blank" rel="noopener" class="secondary">g0v 整理頁 →</a>
     </div>
   `;
-
-  // 若 records.length > 1,提示有歷史紀錄
-  if (records.length > 1) {
-    html = `
-      <div style="margin: 20px 0 0;padding: 10px 14px;background: var(--bg);border: 1px solid var(--border);border-radius: var(--radius-sm);font-size: 12px;color: var(--text-soft);">
-        💡 本案共 ${records.length} 筆公告,目前顯示最新一筆(${escapeHtml(latest.brief && latest.brief.type || '')})。<br>
-        關閉本面板後,點卡片下方「查看本案所有公告」可看全部歷史。
-      </div>
-    ` + html;
-  }
 
   body.innerHTML = html;
 }
