@@ -1003,16 +1003,37 @@ html, body {
   filter: grayscale(0.3);
 }
 .detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 13px;
+}
+.detail-grid-row {
   display: grid;
   grid-template-columns: 110px 1fr;
-  gap: 12px 18px;
-  font-size: 13px;
+  gap: 4px 18px;
+  align-items: baseline;
+}
+.detail-grid-row.long {
+  grid-template-columns: 1fr;
+  gap: 4px;
 }
 .detail-grid dt {
   color: var(--text-faint);
   font-size: 11px;
   padding-top: 3px;
   letter-spacing: 0.02em;
+  line-height: 1.5;
+  margin: 0;
+}
+.detail-grid-row.long dt {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  padding-bottom: 2px;
+  border-left: 2px solid var(--border-strong);
+  padding-left: 8px;
 }
 .detail-grid dd {
   color: var(--text);
@@ -1020,6 +1041,11 @@ html, body {
   word-break: break-word;
   white-space: pre-wrap;
   line-height: 1.6;
+}
+.detail-grid-row.long dd {
+  padding-left: 10px;
+  font-size: 13px;
+  line-height: 1.7;
 }
 .detail-grid dd.amount {
   font-family: var(--mono);
@@ -2161,16 +2187,19 @@ function renderDetail(body, data, mainR) {
         <div class="detail-section-title">
           <span class="section-icon">${sectionIcons[groupName] || '·'}</span> ${groupName}
         </div>
-        <dl class="detail-grid">
+        <div class="detail-grid">
     `;
     for (const it of items) {
       let cls = '';
       if (it.label.indexOf('金額') !== -1) cls = 'amount';
       else if (it.label.indexOf('得標廠商') !== -1 || it.label.indexOf('廠商名稱') !== -1) cls = 'company';
       else if (it.label.indexOf('時間') !== -1) cls = 'time';
-      html += `<dt>${escapeHtml(it.label)}</dt><dd class="${cls}">${escapeHtml(it.value)}</dd>`;
+      // 標籤超過 10 字視為長標籤,改成上下排列
+      const isLong = it.label.length > 10 || it.value.length > 100;
+      const rowCls = isLong ? 'detail-grid-row long' : 'detail-grid-row';
+      html += `<div class="${rowCls}"><dt>${escapeHtml(it.label)}</dt><dd class="${cls}">${escapeHtml(it.value)}</dd></div>`;
     }
-    html += `</dl></section>`;
+    html += `</div></section>`;
   }
 
   html += `
