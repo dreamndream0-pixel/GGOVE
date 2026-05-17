@@ -1117,16 +1117,40 @@ html, body {
 
 /* 本案所有公告:時間軸 */
 .detail-timeline {
-  padding: 18px 0 14px;
+  padding: 0;
+  overflow: hidden;
 }
-.detail-timeline .detail-section-title {
-  padding: 0 20px 12px;
-  margin-bottom: 0;
+.detail-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  text-align: left;
+  transition: background 0.12s ease;
+}
+.detail-section-toggle:hover { background: var(--surface-soft); }
+.toggle-arrow {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-faint);
 }
 .tl-list {
   display: flex;
   flex-direction: column;
 }
+.tl-item {
+  border-bottom: 1px solid var(--border);
+}
+.tl-item:last-child { border-bottom: none; }
 .tl-row {
   display: grid;
   grid-template-columns: 28px 1fr 50px;
@@ -1136,7 +1160,6 @@ html, body {
   color: inherit;
   border: none;
   background: transparent;
-  border-bottom: 1px solid var(--border);
   transition: background 0.12s ease;
   position: relative;
   cursor: pointer;
@@ -1216,6 +1239,46 @@ html, body {
 .tl-row:hover .tl-arrow {
   opacity: 1;
   color: var(--accent);
+}
+
+.tl-expand {
+  background: var(--bg);
+  border-top: 1px dashed var(--border);
+  padding: 14px 20px 14px 56px;
+}
+.tl-detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tl-detail-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 4px 14px;
+  font-size: 12px;
+  align-items: baseline;
+}
+.tl-detail-row.long {
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+.tl-detail-label {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.tl-detail-row.long .tl-detail-label {
+  border-left: 2px solid var(--border-strong);
+  padding-left: 8px;
+  font-weight: 500;
+}
+.tl-detail-value {
+  color: var(--text);
+  word-break: break-word;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+.tl-detail-row.long .tl-detail-value {
+  padding-left: 10px;
 }
 
 .detail-loading {
@@ -2108,7 +2171,11 @@ function renderDetail(body, data, mainR) {
       '公告日期', '截止投標', '截止收件', '截標時間',
       '開標時間', '開標日期',
       '預算或預估', '公告金額',
-      '押標金', '保證金', '履約保證金', '保固保證金',
+    ],
+    '💰 押標金與保證金': [
+      '押標金', '押標金金額', '保證金', '保證金金額',
+      '履約保證金', '保固保證金',
+      '招標文件售價', '招標文件費',
     ],
     '📝 資格與說明': [
       '廠商資格', '投標資格', '基本資格',
@@ -2148,7 +2215,7 @@ function renderDetail(body, data, mainR) {
 
   // 本案所有公告(時間軸)
   if (records.length > 1) {
-    // 暫存當前 records 供 openTimelineDetail 使用
+    // 暫存當前 records 供展開用
     window._timelineRecords = sorted;
     window._timelineMainR = mainR;
 
@@ -2177,30 +2244,34 @@ function renderDetail(body, data, mainR) {
       }
 
       return `
-        <button type="button" class="tl-row${isLatest ? ' tl-latest' : ''}" onclick="openTimelineDetail(${idx}, event)">
-          <div class="tl-dot" style="background:${dotColor};"></div>
-          <div class="tl-content">
-            <div class="tl-top">
-              <span class="tl-type">${escapeHtml(t)}</span>
-              ${isLatest ? '<span class="tl-tag-latest">最新</span>' : ''}
+        <div class="tl-item">
+          <button type="button" class="tl-row${isLatest ? ' tl-latest' : ''}" onclick="toggleTimelineItem(${idx}, this)">
+            <div class="tl-dot" style="background:${dotColor};"></div>
+            <div class="tl-content">
+              <div class="tl-top">
+                <span class="tl-type">${escapeHtml(t)}</span>
+                ${isLatest ? '<span class="tl-tag-latest">最新</span>' : ''}
+              </div>
+              <div class="tl-meta">
+                <span class="tl-date">${fmtDate(String(rec.date))}</span>
+                ${amtStr ? `<span class="tl-amount">${amtStr}</span>` : ''}
+              </div>
+              ${compStr}
             </div>
-            <div class="tl-meta">
-              <span class="tl-date">${fmtDate(String(rec.date))}</span>
-              ${amtStr ? `<span class="tl-amount">${amtStr}</span>` : ''}
-            </div>
-            ${compStr}
-          </div>
-          <div class="tl-arrow">詳情 →</div>
-        </button>
+            <div class="tl-arrow">展開 ▾</div>
+          </button>
+          <div class="tl-expand" id="tl-expand-${idx}" style="display:none;"></div>
+        </div>
       `;
     }).join('');
 
     html += `
       <section class="detail-section detail-timeline">
-        <div class="detail-section-title">
+        <button type="button" class="detail-section-toggle" onclick="toggleTimelineSection(this)">
           <span class="section-icon">🗂</span> 本案所有公告 · ${records.length} 筆
-        </div>
-        <div class="tl-list">${tlRows}</div>
+          <span class="toggle-arrow">▾</span>
+        </button>
+        <div class="tl-list" id="tl-list-main" style="display:none;">${tlRows}</div>
       </section>
     `;
   }
@@ -2290,7 +2361,95 @@ function toggleSiblings(idx, ev) {
   `;
 }
 
-// 從「本案所有公告」時間軸打開詳情面板 — 顯示該筆公告的完整 detail
+// 「本案所有公告」標題:展開/收合整個時間軸
+function toggleTimelineSection(btn) {
+  const list = btn.nextElementSibling;
+  const arrow = btn.querySelector('.toggle-arrow');
+  if (!list) return;
+  if (list.style.display === 'none') {
+    list.style.display = 'flex';
+    if (arrow) arrow.textContent = '▴';
+  } else {
+    list.style.display = 'none';
+    if (arrow) arrow.textContent = '▾';
+  }
+}
+
+// 點時間軸某一列:就地展開該筆公告的重要欄位
+function toggleTimelineItem(idx, btn) {
+  const expandEl = document.getElementById('tl-expand-' + idx);
+  if (!expandEl) return;
+  const arrow = btn.querySelector('.tl-arrow');
+
+  if (expandEl.style.display !== 'none') {
+    expandEl.style.display = 'none';
+    if (arrow) arrow.textContent = '展開 ▾';
+    return;
+  }
+
+  // 已渲染過就直接展開
+  if (expandEl.dataset.loaded === 'true') {
+    expandEl.style.display = 'block';
+    if (arrow) arrow.textContent = '收合 ▴';
+    return;
+  }
+
+  const rec = (window._timelineRecords || [])[idx];
+  if (!rec) return;
+  const detail = rec.detail || {};
+
+  if (Object.keys(detail).length === 0) {
+    expandEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text-faint);">此筆無詳細資料</div>';
+    expandEl.style.display = 'block';
+    expandEl.dataset.loaded = 'true';
+    if (arrow) arrow.textContent = '收合 ▴';
+    return;
+  }
+
+  // 用白名單抽出重要欄位
+  const wl = {
+    '決標': ['決標廠商','廠商名稱','廠商代碼','統一編號','決標金額','預算金額','底價金額','底價','總決標金額','決標日期','決標方式'],
+    '招標': ['標案案號','標案名稱','採購名稱','採購類別','標的分類','招標方式','採購方式','決標方式','機關名稱','單位名稱','採購單位','機關地址','聯絡人','聯絡電話','傳真號碼','電子郵件信箱','公告日期','截止投標','截止收件','截標時間','開標時間','開標日期','預算或預估','公告金額'],
+    '押標金': ['押標金','押標金金額','保證金','保證金金額','履約保證金','保固保證金','招標文件售價','招標文件費'],
+    '資格': ['廠商資格','投標資格','基本資格','附加說明','附註'],
+  };
+
+  let rows = '';
+  for (const k of Object.keys(detail)) {
+    const v = detail[k];
+    if (v == null || v === '') continue;
+    if (k === 'type' || k === 'url' || k === 'pkPmsMain') continue;
+    const colonIdx = k.indexOf(':');
+    const label = colonIdx > 0 ? k.substring(colonIdx + 1) : k;
+    if (label.indexOf('是否') !== -1) continue;
+
+    let matched = false;
+    for (const sec of Object.keys(wl)) {
+      if (wl[sec].some(kw => label.indexOf(kw) !== -1)) { matched = true; break; }
+    }
+    if (!matched) continue;
+
+    const cleanValue = String(v).replace(/\t/g,' ').replace(/\u3000/g,' ').replace(/ {2,}/g,' ').replace(/\n{3,}/g,'\n\n').replace(/^[ \n]+|[ \n]+$/g,'');
+    const isLong = label.length > 10 || cleanValue.length > 80;
+    rows += `
+      <div class="tl-detail-row${isLong ? ' long' : ''}">
+        <span class="tl-detail-label">${escapeHtml(label)}</span>
+        <span class="tl-detail-value">${escapeHtml(cleanValue)}</span>
+      </div>
+    `;
+  }
+
+  if (!rows) {
+    expandEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text-faint);">此筆無重要欄位</div>';
+  } else {
+    expandEl.innerHTML = `<div class="tl-detail-grid">${rows}</div>`;
+  }
+  expandEl.style.display = 'block';
+  expandEl.dataset.loaded = 'true';
+  if (arrow) arrow.textContent = '收合 ▴';
+}
+
+// 從「本案所有公告」時間軸打開詳情面板(保留但不再從 UI 觸發)
 async function openTimelineDetail(tlIdx, ev) {
   ev.stopPropagation();
   const rec = (window._timelineRecords || [])[tlIdx];
