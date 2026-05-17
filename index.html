@@ -1680,8 +1680,10 @@ async function search() {
   const exclude = parseList($('exclude').value);
   const unit = $('unit').value.trim();
   const pages = parseInt($('pages').value);
-  const dateFrom = $('date-from').value;  // YYYY-MM-DD or ''
+  const dateFrom = $('date-from').value;
   const dateTo = $('date-to').value;
+  const fromRaw = dateFrom ? dateFrom.replace(/-/g, '') : '';
+  const toRaw = dateTo ? dateTo.replace(/-/g, '') : '';
 
   $('btn-search').disabled = true;
   $('btn-search').textContent = '搜尋中…';
@@ -1689,97 +1691,112 @@ async function search() {
   $('result-body').innerHTML = `<div class="state"><span class="spinner"></span><div style="margin-top:14px;font-size:13px;color:var(--text-soft);">正在從 g0v 開放資料庫抓取...</div></div>`;
 
   saveSettings();
+  // 給這次搜尋一個 ID，如果使用者重新搜尋，舊的背景抓取會自動停止
+  const searchId = ++window._searchId;
 
-  let all = [];
-  try {
-    for (let p = 1; p <= pages; p++) {
-      $('topbar-meta').innerHTML = `<span class="spinner" style="vertical-align:-4px;"></span> 第 ${p} / ${pages} 頁`;
+  // 篩選 + 轉換函式（共用）
+  function filterAndMap(records) {
+    return records.filter(rec => {
+      const brief = rec.brief || {};
+      const title = brief.title || rec.title || '';
+      const unitName = rec.unit_name || brief.unit_name || '';
+      const recType = brief.type || '';
+      const typeKey = classifyType(recType);
+      const dateRaw = String(rec.date || '');
+      if (currentTypes.size === 0) return false;
+      if (!currentTypes.has(typeKey)) return false;
+      for (const w of include) if (title.indexOf(w) === -1) return false;
+      for (const w of exclude) if (title.indexOf(w) !== -1) return false;
+      if (unit && unitName.indexOf(unit) === -1) return false;
+      if (fromRaw && dateRaw && dateRaw < fromRaw) return false;
+      if (toRaw && dateRaw && dateRaw > toRaw) return false;
+      return true;
+    }).map(rec => {
+      const brief = rec.brief || {};
+      const briefType = brief.type || '';
+      const typeKey = classifyType(briefType);
+      const amount = getAmount(rec);
+      const jobNo = rec.job_number || '';
+      const unitId = rec.unit_id || '';
+      const filename = rec.filename || '';
+      let pccUrl = '';
+      if (filename && rec.date) {
+        pccUrl = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(filename)}.xml`;
+      }
+      const typeLabels = { tender:'招標', award:'決標', rental:'出租', sell:'變賣', amend:'更正', other:'其他' };
+      return {
+        title: brief.title || rec.title || '(無標題)',
+        unit: rec.unit_name || brief.unit_name || '',
+        date: String(rec.date || ''),
+        type: typeKey,
+        typeLabel: typeLabels[typeKey] || '公告',
+        amount: amount,
+        url: pccUrl || `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(unitId)}&job_number=${encodeURIComponent(jobNo)}`,
+        altUrl: `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(unitId)}&job_number=${encodeURIComponent(jobNo)}`,
+        hasPccUrl: !!pccUrl,
+        unitId: unitId,
+        jobNo: jobNo,
+      };
+    });
+  }
+
+  let allRaw = [];
+  let failed = false;
+
+  for (let p = 1; p <= pages; p++) {
+    // 如果使用者已經發起新搜尋，停止這次
+    if (window._searchId !== searchId) return;
+
+    $('topbar-meta').innerHTML = `<span class="spinner" style="vertical-align:-4px;"></span> 第 ${p} / ${pages} 頁${p > 1 ? '（背景載入中）' : ''}`;
+
+    try {
       const data = await fetchPage(query, p);
       const records = data.records || [];
       if (records.length === 0) break;
-      all = all.concat(records);
+      allRaw = allRaw.concat(records);
+    } catch (e) {
+      if (p === 1) {
+        // 第一頁就失敗 = 完全沒資料
+        $('result-body').innerHTML = `<div class="state"><div class="state-icon">!</div><div class="state-title">抓取失敗</div><div class="state-desc">${e.message}<br><br>可能原因:網路斷線、API 暫時忙線、或被防火牆擋住。請稍等幾分鐘再試。</div></div>`;
+        $('btn-search').disabled = false;
+        $('btn-search').textContent = '開始搜尋';
+        $('topbar-meta').textContent = 'Error';
+        return;
+      }
+      // 後續頁失敗，用已有資料繼續
+      failed = true;
+      break;
     }
-  } catch (e) {
-    $('result-body').innerHTML = `<div class="state"><div class="state-icon">!</div><div class="state-title">抓取失敗</div><div class="state-desc">${e.message}<br><br>可能原因:網路斷線、API 暫時忙線、或被防火牆擋住。請稍等幾分鐘再試。</div></div>`;
-    $('btn-search').disabled = false;
-    $('btn-search').textContent = '開始搜尋';
-    $('topbar-meta').textContent = 'Error';
-    return;
+
+    // 每抓完一頁就更新畫面
+    if (window._searchId !== searchId) return;
+    currentResults = filterAndMap(allRaw);
+    renderResults();
+    $('btn-export').disabled = currentResults.length === 0;
+    const statusSuffix = p < pages ? ' · 背景載入更多中…' : '';
+    $('topbar-meta').textContent = `抓取 ${allRaw.length} 筆 / 篩出 ${currentResults.length} 筆${statusSuffix}`;
+
+    // 第一頁抓完後就開放搜尋按鈕（使用者可以隨時重新搜尋中斷背景）
+    if (p === 1) {
+      $('btn-search').disabled = false;
+      $('btn-search').textContent = '開始搜尋';
+    }
   }
 
-  // Filter
-  // 把 YYYY-MM-DD 轉成 YYYYMMDD 給比對用
-  const fromRaw = dateFrom ? dateFrom.replace(/-/g, '') : '';
-  const toRaw = dateTo ? dateTo.replace(/-/g, '') : '';
-
-  const filtered = all.filter(rec => {
-    const brief = rec.brief || {};
-    const title = brief.title || rec.title || '';
-    const unitName = rec.unit_name || brief.unit_name || '';
-    const recType = brief.type || '';
-    const typeKey = classifyType(recType);
-    const dateRaw = String(rec.date || '');
-
-    if (currentTypes.size === 0) return false; // 全不選 = 全不顯示
-    if (!currentTypes.has(typeKey)) return false;
-    for (const w of include) if (title.indexOf(w) === -1) return false;
-    for (const w of exclude) if (title.indexOf(w) !== -1) return false;
-    if (unit && unitName.indexOf(unit) === -1) return false;
-    if (fromRaw && dateRaw && dateRaw < fromRaw) return false;
-    if (toRaw && dateRaw && dateRaw > toRaw) return false;
-    return true;
-  });
-
-  currentResults = filtered.map(rec => {
-    const brief = rec.brief || {};
-    const briefType = brief.type || '';
-    const typeKey = classifyType(briefType);
-    const amount = getAmount(rec);
-    const jobNo = rec.job_number || '';
-    const unitId = rec.unit_id || '';
-    const filename = rec.filename || '';
-
-    // 採購網「萬用直連 URL」— 所有 filename 前綴都適用
-    // 格式:https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=YYYYMMDD&fn=FILENAME.xml
-    let pccUrl = '';
-    if (filename && rec.date) {
-      pccUrl = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(filename)}.xml`;
-    }
-
-    // 類型標籤
-    const typeLabels = {
-      tender: '招標', award: '決標', rental: '出租',
-      sell: '變賣', amend: '更正', other: '其他'
-    };
-    const typeLabel = typeLabels[typeKey] || '公告';
-
-    return {
-      title: brief.title || rec.title || '(無標題)',
-      unit: rec.unit_name || brief.unit_name || '',
-      date: String(rec.date || ''),
-      type: typeKey,
-      typeLabel: typeLabel,
-      amount: amount,
-      // 主連結:能拼採購網直連就用,否則 fallback 到 g0v viewer
-      url: pccUrl || `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(unitId)}&job_number=${encodeURIComponent(jobNo)}`,
-      // 副連結:總是指向 g0v viewer(資料整理頁,廠商、預算、聯絡人都有)
-      altUrl: `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(unitId)}&job_number=${encodeURIComponent(jobNo)}`,
-      hasPccUrl: !!pccUrl,
-      // 給歷史功能用
-      unitId: unitId,
-      jobNo: jobNo,
-    };
-  });
-
+  // 最終更新
+  if (window._searchId !== searchId) return;
+  currentResults = filterAndMap(allRaw);
   renderResults();
-  $('btn-search').disabled = false;
-  $('btn-search').textContent = '開始搜尋';
   $('btn-export').disabled = currentResults.length === 0;
-  $('topbar-meta').textContent = `抓取 ${all.length} 筆 / 篩出 ${currentResults.length} 筆`;
+  const failNote = failed ? '（部分頁面抓取失敗）' : '';
+  $('topbar-meta').textContent = `抓取 ${allRaw.length} 筆 / 篩出 ${currentResults.length} 筆 · 完成${failNote}`;
 }
 
 // ----- Render -----
-function renderResults() {
+let _lastRenderedCount = 0;
+
+function renderResults(mode) {
+  mode = mode || 'full';
   const sort = $('sort').value;
   const sorted = [...currentResults].sort((a, b) => {
     if (sort === 'date-desc') return (b.date || '').localeCompare(a.date || '');
@@ -1832,38 +1849,53 @@ function renderResults() {
     return;
   }
 
-  body.innerHTML = grouped.map((r, i) => {
-    const sibCount = (r.siblings || []).length;
-    const sibBadge = sibCount > 0
-      ? `<span class="sib-badge" title="同名標案歷次重招 ${sibCount} 次">↻ 重招 ${sibCount} 次</span>`
-      : '';
-    const sibBtn = sibCount > 0
-      ? `<button class="btn-history" onclick="toggleSiblings(${i}, event)">↻ 展開歷次招標 (${sibCount + 1} 筆) ▾</button>`
-      : '';
+  const startIdx = (mode === 'append') ? _lastRenderedCount : 0;
+  if (mode === 'full') { body.innerHTML = ''; _lastRenderedCount = 0; }
 
-    return `
-    <div class="tender-card" data-idx="${i}">
-      <div class="tender-card-main" onclick="openDetail(${i}, event)">
-        <div class="tender-card-top">
-          <span class="tag tag-${r.type}">${r.typeLabel}</span>
-          <span class="tender-date">${fmtDate(r.date)}</span>
-          ${r.amount > 0 ? `<span class="tender-amount">${fmtMoney(r.amount)}</span>` : ''}
-          ${sibBadge}
-        </div>
-        <div class="tender-title">${escapeHtml(r.title)}</div>
-        <div class="tender-unit">${escapeHtml(r.unit) || '(機關未填)'}</div>
-        <div class="tender-meta-row" id="meta-${i}">
-          <span class="meta-loading">載入截標 / 開標 / 公告金額…</span>
-        </div>
-      </div>
-      ${sibBtn ? `<div class="tender-sib-bar">${sibBtn}</div>` : ''}
-      <div class="tender-siblings" id="siblings-${i}" style="display:none;"></div>
-    </div>
-  `;
-  }).join('');
+  const BATCH = 10;
+  let cursor = startIdx;
 
-  // 自動背景抓截標/開標/金額(已有快取的會秒填)
-  fetchMetaInBackground(grouped);
+  function renderBatch() {
+    const end = Math.min(cursor + BATCH, grouped.length);
+    const fragment = document.createDocumentFragment();
+    for (let i = cursor; i < end; i++) {
+      const r = grouped[i];
+      const sibCount = (r.siblings || []).length;
+      const sibBadge = sibCount > 0
+        ? `<span class="sib-badge" title="同名標案歷次重招 ${sibCount} 次">↻ 重招 ${sibCount} 次</span>`
+        : '';
+      const sibBtn = sibCount > 0
+        ? `<button class="btn-history" onclick="toggleSiblings(${i}, event)">↻ 展開歷次招標 (${sibCount + 1} 筆) ▾</button>`
+        : '';
+      const card = document.createElement('div');
+      card.className = 'tender-card';
+      card.dataset.idx = i;
+      card.innerHTML = `
+        <div class="tender-card-main" onclick="openDetail(${i}, event)">
+          <div class="tender-card-top">
+            <span class="tag tag-${r.type}">${r.typeLabel}</span>
+            <span class="tender-date">${fmtDate(r.date)}</span>
+            ${r.amount > 0 ? `<span class="tender-amount">${fmtMoney(r.amount)}</span>` : ''}
+            ${sibBadge}
+          </div>
+          <div class="tender-title">${escapeHtml(r.title)}</div>
+          <div class="tender-unit">${escapeHtml(r.unit) || '(機關未填)'}</div>
+          <div class="tender-meta-row" id="meta-${i}">
+            <span class="meta-loading">載入截標 / 開標 / 公告金額…</span>
+          </div>
+        </div>
+        ${sibBtn ? `<div class="tender-sib-bar">${sibBtn}</div>` : ''}
+        <div class="tender-siblings" id="siblings-${i}" style="display:none;"></div>
+      `;
+      fragment.appendChild(card);
+    }
+    body.appendChild(fragment);
+    fetchMetaForRange(grouped, cursor, end);
+    cursor = end;
+    _lastRenderedCount = cursor;
+    if (cursor < grouped.length) requestAnimationFrame(renderBatch);
+  }
+  renderBatch();
 }
 
 function escapeHtml(s) {
@@ -1982,6 +2014,43 @@ function renderCardMeta(idx, meta) {
     el.innerHTML = '<span class="meta-na">— 無時程或金額資訊</span>';
   } else {
     el.innerHTML = items.join('');
+  }
+}
+
+// 只對指定範圍的卡片抓 meta
+async function fetchMetaForRange(grouped, start, end) {
+  let failures = 0;
+  for (let i = start; i < end; i++) {
+    const r = grouped[i];
+    const el = document.getElementById('meta-' + i);
+    if (!el) continue;
+    if (!r.unitId || !r.jobNo) {
+      el.innerHTML = '<span class="meta-na">—</span>';
+      continue;
+    }
+    const cacheKey = r.unitId + '|' + r.jobNo;
+    if (detailCache[cacheKey]) {
+      renderCardMeta(i, extractMetaFromTender(detailCache[cacheKey]));
+      continue;
+    }
+    if (failures >= 3) {
+      el.innerHTML = '<span class="meta-na">— 暫停</span>';
+      continue;
+    }
+    try {
+      const url = `https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      detailCache[cacheKey] = data;
+      updateCacheBadge();
+      renderCardMeta(i, extractMetaFromTender(data));
+      failures = 0;
+    } catch (e) {
+      failures++;
+      el.innerHTML = '<span class="meta-na">— 載入失敗</span>';
+    }
+    await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 150));
   }
 }
 
