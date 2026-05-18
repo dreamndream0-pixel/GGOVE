@@ -1771,12 +1771,12 @@ async function search() {
     // 每抓完一頁就更新畫面
     if (window._searchId !== searchId) return;
     currentResults = filterAndMap(allRaw);
-    renderResults();
+    renderResults('full');
     $('btn-export').disabled = currentResults.length === 0;
     const statusSuffix = p < pages ? ' · 背景載入更多中…' : '';
     $('topbar-meta').textContent = `抓取 ${allRaw.length} 筆 / 篩出 ${currentResults.length} 筆${statusSuffix}`;
 
-    // 第一頁抓完後就開放搜尋按鈕（使用者可以隨時重新搜尋中斷背景）
+    // 第一頁抓完後就開放搜尋按鈕
     if (p === 1) {
       $('btn-search').disabled = false;
       $('btn-search').textContent = '開始搜尋';
@@ -1786,7 +1786,7 @@ async function search() {
   // 最終更新
   if (window._searchId !== searchId) return;
   currentResults = filterAndMap(allRaw);
-  renderResults();
+  renderResults('full');
   $('btn-export').disabled = currentResults.length === 0;
   const failNote = failed ? '（部分頁面抓取失敗）' : '';
   $('topbar-meta').textContent = `抓取 ${allRaw.length} 筆 / 篩出 ${currentResults.length} 筆 · 完成${failNote}`;
@@ -1794,9 +1794,14 @@ async function search() {
 
 // ----- Render -----
 let _lastRenderedCount = 0;
+let _metaAbort = 0; // 每次 full 重繪 +1,舊的 meta 抓取檢測到就停止
 
 function renderResults(mode) {
   mode = mode || 'full';
+
+  if (mode === 'full') {
+    _metaAbort++; // 中斷之前的 meta 抓取
+  }
   const sort = $('sort').value;
   const sorted = [...currentResults].sort((a, b) => {
     if (sort === 'date-desc') return (b.date || '').localeCompare(a.date || '');
@@ -2020,7 +2025,9 @@ function renderCardMeta(idx, meta) {
 // 只對指定範圍的卡片抓 meta
 async function fetchMetaForRange(grouped, start, end) {
   let failures = 0;
+  const abortId = _metaAbort; // 記住啟動時的 ID
   for (let i = start; i < end; i++) {
+    if (_metaAbort !== abortId) return; // 被新的 full 重繪中斷了
     const r = grouped[i];
     const el = document.getElementById('meta-' + i);
     if (!el) continue;
