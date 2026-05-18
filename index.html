@@ -3,21 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>標案探勘 · Tender Explorer</title>
+<title>政府標案探勘</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
+  --serif: 'Noto Serif TC', serif;
+  --sans: 'Noto Sans TC', -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
   --bg: #fafaf7;
   --surface: #ffffff;
-  --surface-soft: #f4f3ee;
-  --border: #e8e6df;
-  --border-strong: #c9c5b8;
+  --surface-soft: #f5f5f0;
+  --border: #e8e6e0;
+  --border-strong: #d4d2cc;
   --text: #1c1c1a;
-  --text-soft: #5a5852;
-  --text-faint: #8e8b80;
-  --accent: #b91c1c;
+  --text-soft: #6b6963;
+  --text-faint: #a09d95;
+  --accent: #c1342e;
   --accent-soft: #fef2f2;
   --tender: #1e40af;
   --tender-soft: #eff6ff;
@@ -31,1521 +33,354 @@
   --amend-soft: #f5f3ff;
   --other: #525252;
   --other-soft: #f5f5f4;
-  --shadow-sm: 0 1px 2px rgba(28, 28, 26, 0.04);
-  --shadow: 0 1px 3px rgba(28, 28, 26, 0.06), 0 4px 16px rgba(28, 28, 26, 0.04);
-  --radius: 6px;
-  --radius-sm: 4px;
-  --serif: 'Noto Serif TC', 'Source Han Serif TC', 'PMingLiU', serif;
-  --sans: 'Noto Sans TC', -apple-system, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-  --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(28,28,26,0.06);
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
 
-html, body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-}
+/* Spinner */
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* ============ Top Bar ============ */
-.topbar {
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  padding: 18px 32px;
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  backdrop-filter: blur(8px);
-  background: rgba(255, 255, 255, 0.92);
-}
-.brand {
-  font-family: var(--serif);
-  font-weight: 700;
-  font-size: 22px;
-  letter-spacing: -0.01em;
-}
-.brand .dot {
-  color: var(--accent);
-  font-family: var(--sans);
-}
-.brand-sub {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-faint);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-left: 4px;
-}
-.topbar-meta {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--text-faint);
-  font-family: var(--mono);
-}
+/* Layout */
+.topbar { position: sticky; top: 0; z-index: 50; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 28px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-soft); }
+.layout { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 44px); }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
 
-/* ============ Layout ============ */
-.app {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  min-height: calc(100vh - 60px);
-}
+/* Sidebar */
+.sidebar { padding: 24px; border-right: 1px solid var(--border); background: var(--surface); overflow-y: auto; }
+.sb-brand { font-family: var(--serif); font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+.sb-brand em { color: var(--accent); font-style: normal; }
+.sb-desc { font-size: 12px; color: var(--text-soft); margin-bottom: 24px; line-height: 1.6; }
+.sb-section { margin-bottom: 18px; }
+.sb-label { display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; font-weight: 500; }
+.sb-input { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--sans); font-size: 13px; background: var(--bg); transition: border-color 0.15s; }
+.sb-input:focus { outline: none; border-color: var(--text); }
+.sb-hint { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+.sb-select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--sans); font-size: 13px; background: var(--bg); }
 
-.sidebar {
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: 28px 24px;
-  position: sticky;
-  top: 60px;
-  height: calc(100vh - 60px);
-  overflow-y: auto;
-}
+/* Type checkboxes */
+.type-checkboxes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+.type-cb { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); cursor: pointer; font-size: 12px; transition: all 0.12s; }
+.type-cb:hover { border-color: var(--border-strong); }
+.type-cb input { margin: 0; cursor: pointer; accent-color: var(--text); }
+.type-cb-tag { font-family: var(--mono); font-size: 9px; font-weight: 500; padding: 2px 6px; border-radius: 3px; }
+.type-cb-tag.t-tender { background: var(--tender-soft); color: var(--tender); }
+.type-cb-tag.t-award { background: var(--award-soft); color: var(--award); }
+.type-cb-tag.t-rental { background: var(--rental-soft); color: var(--rental); }
+.type-cb-tag.t-sell { background: var(--sell-soft); color: var(--sell); }
+.type-cb-tag.t-amend { background: var(--amend-soft); color: var(--amend); }
+.type-cb-tag.t-other { background: var(--other-soft); color: var(--other); }
+.type-quick { display: flex; gap: 4px; }
+.type-quick button { flex: 1; padding: 5px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; font-family: var(--sans); font-size: 11px; color: var(--text-soft); cursor: pointer; }
+.type-quick button:hover { color: var(--text); background: var(--surface-soft); }
 
-.main {
-  padding: 28px 32px 64px;
-  max-width: 1200px;
-}
+/* Date quick buttons */
+.date-quick { display: flex; gap: 4px; margin-bottom: 8px; }
+.date-quick button { flex: 1; padding: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; font-family: var(--sans); font-size: 12px; cursor: pointer; color: var(--text-soft); }
+.date-quick button.active { background: var(--text); color: var(--surface); border-color: var(--text); }
+.date-row { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-soft); }
+.date-row input { flex: 1; }
 
-/* ============ Sidebar Form ============ */
-.sb-section {
-  margin-bottom: 28px;
-}
-.sb-label {
-  display: block;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  margin-bottom: 8px;
-}
-.sb-hint {
-  font-size: 11px;
-  color: var(--text-faint);
-  margin-top: 6px;
-  line-height: 1.5;
-}
-.sb-input, .sb-select {
-  width: 100%;
-  padding: 9px 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--text);
-  transition: all 0.15s ease;
-}
-.sb-input:focus, .sb-select:focus {
-  outline: none;
-  border-color: var(--text);
-  background: var(--surface);
-}
-.sb-input::placeholder { color: var(--text-faint); }
+/* Buttons */
+.sb-actions { display: flex; gap: 8px; margin-top: 20px; }
+.btn-primary { flex: 1; padding: 12px; background: var(--text); color: var(--surface); border: none; border-radius: var(--radius); font-family: var(--sans); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-primary:hover { background: #000; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { padding: 12px; background: var(--bg); color: var(--text-soft); border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--sans); font-size: 13px; cursor: pointer; }
+.btn-secondary:hover { color: var(--text); }
 
-.sb-radio-group {
-  display: flex;
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--bg);
-}
-.sb-radio-group label {
-  flex: 1;
-  text-align: center;
-  padding: 8px 6px;
-  font-size: 13px;
-  cursor: pointer;
-  border-right: 1px solid var(--border);
-  transition: all 0.15s ease;
-  color: var(--text-soft);
-}
-.sb-radio-group label:last-child { border-right: none; }
-.sb-radio-group input { display: none; }
-.sb-radio-group input:checked + label,
-.sb-radio-group label.checked {
-  background: var(--text);
-  color: var(--surface);
-  font-weight: 500;
-}
+/* Main area */
+.main { padding: 24px 28px; }
 
-.btn-search {
-  width: 100%;
-  padding: 12px;
-  background: var(--text);
-  color: var(--surface);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-family: var(--sans);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  margin-top: 8px;
-}
-.btn-search:hover { background: #000; transform: translateY(-1px); }
-.btn-search:active { transform: translateY(0); }
-.btn-search:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.stat.accent { background: #fef2f2; border-color: #fecaca; }
+.stat-label { font-size: 11px; color: var(--text-faint); margin-bottom: 6px; }
+.stat-value { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+@media (max-width: 600px) { .stats { grid-template-columns: 1fr 1fr; } }
 
-.btn-reset {
-  width: 100%;
-  padding: 9px;
-  background: transparent;
-  color: var(--text-soft);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-family: var(--sans);
-  font-size: 13px;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: all 0.15s ease;
-}
-.btn-reset:hover { background: var(--surface-soft); color: var(--text); }
+/* Result header */
+.result-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.result-head-title { font-size: 13px; color: var(--text-soft); }
 
-.date-quick {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin-bottom: 8px;
-}
-.date-quick button {
-  padding: 6px 4px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-family: var(--sans);
-  font-size: 12px;
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.date-quick button:hover { background: var(--surface-soft); color: var(--text); border-color: var(--border-strong); }
-.date-quick button.active {
-  background: var(--text);
-  color: var(--surface);
-  border-color: var(--text);
-  font-weight: 500;
-}
-.date-range {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 6px;
-  align-items: center;
-}
-.date-range .sb-input {
-  font-size: 12px;
-  padding: 7px 8px;
-  font-family: var(--mono);
-}
-.date-sep {
-  font-size: 11px;
-  color: var(--text-faint);
-}
-
-/* ============ Main Content ============ */
-.page-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 28px;
-  flex-wrap: wrap;
-}
-.page-title {
-  font-family: var(--serif);
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-.page-title .accent { color: var(--accent); }
-.page-sub {
-  font-size: 13px;
-  color: var(--text-soft);
-  margin-top: 4px;
-}
-.page-actions {
-  display: flex;
-  gap: 8px;
-}
-.btn-ghost {
-  padding: 8px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-family: var(--sans);
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.btn-ghost:hover { background: var(--surface-soft); border-color: var(--border-strong); }
-.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* ============ Stats Cards ============ */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 28px;
-}
-.stat {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 18px;
-  position: relative;
-  overflow: hidden;
-}
-.stat-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  margin-bottom: 6px;
-}
-.stat-value {
-  font-family: var(--serif);
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.01em;
-}
-.stat-value .unit {
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--text-faint);
-  margin-left: 4px;
-  font-weight: 400;
-}
-.stat.accent { background: var(--accent-soft); border-color: #fecaca; }
-.stat.accent .stat-value { color: var(--accent); }
-
-/* ============ Results ============ */
-.results {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-.result-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-soft);
-}
-.result-head-title {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-}
-.result-sort {
-  font-size: 12px;
-  color: var(--text-soft);
-}
-.result-sort select {
-  border: none;
-  background: transparent;
-  font-family: var(--sans);
-  font-size: 12px;
-  color: var(--text);
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.tender-card {
-  border-bottom: 1px solid var(--border);
-  transition: background 0.12s ease;
-  position: relative;
-}
-.tender-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: transparent;
-  transition: background 0.12s ease;
-}
+/* Cards */
+.result-body { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; min-height: 200px; }
+.tender-card { border-bottom: 1px solid var(--border); position: relative; transition: background 0.12s; }
+.tender-card::before { content:''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: transparent; transition: background 0.12s; }
 .tender-card:hover { background: var(--surface-soft); }
 .tender-card:hover::before { background: var(--accent); }
 .tender-card:last-child { border-bottom: none; }
-.tender-card-main {
-  padding: 18px 22px 14px;
-  cursor: pointer;
-}
-.tender-card-links {
-  padding: 0 22px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-}
-.tender-card-links a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 500;
-}
-.tender-card-links a:hover { text-decoration: underline; }
-.tender-card-links a.link-soft { color: var(--text-faint); font-weight: 400; }
-.tender-card-links .link-sep { color: var(--border-strong); }
-
-.btn-history {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: var(--sans);
-  font-size: 12px;
-  color: var(--text-soft);
-  cursor: pointer;
-  font-weight: 500;
-}
-.btn-history:hover { color: var(--text); }
-
-.tender-sib-bar {
-  padding: 0 22px 14px;
-  margin-top: -4px;
-}
-.tender-sib-bar .btn-history {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  background: #fef3c7;
-  color: #78350f;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  transition: all 0.12s ease;
-}
-.tender-sib-bar .btn-history:hover {
-  background: #fde68a;
-  color: #422006;
-}
-
-.tender-history {
-  margin: 0 20px 16px;
-  padding: 14px 16px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-
-.sib-badge {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  padding: 2px 7px;
-  border-radius: 3px;
-  background: #fef3c7;
-  color: #92400e;
-  margin-left: auto;
-  letter-spacing: 0.04em;
-}
-
-.tender-siblings {
-  margin: 0 20px 12px;
-  padding: 12px 14px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: var(--radius-sm);
-}
-.sib-header {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #92400e;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed #fde68a;
-}
-.sib-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.sib-row {
-  display: grid;
-  grid-template-columns: 50px 90px 1fr 100px 70px;
-  gap: 10px;
-  align-items: center;
-  padding: 8px 10px;
-  font-size: 12px;
-  text-decoration: none;
-  color: var(--text);
-  border-radius: 3px;
-  background: transparent;
-  border: none;
-  font-family: var(--sans);
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-  transition: background 0.12s ease;
-}
-.sib-row:hover { background: rgba(254, 243, 199, 0.6); }
-.sib-row-main {
-  background: rgba(254, 243, 199, 0.4);
-  font-weight: 500;
-}
-.sib-row-main::before {
-  content: '最新';
-  position: absolute;
-  margin-left: -36px;
-  font-size: 9px;
-  color: #92400e;
-  font-family: var(--mono);
-  letter-spacing: 0.08em;
-}
-.sib-date {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-soft);
-}
-.sib-jobno {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-soft);
-}
-.sib-amount {
-  font-family: var(--mono);
-  font-weight: 500;
-  text-align: right;
-}
-.sib-link {
-  color: var(--accent);
-  font-weight: 500;
-  text-align: right;
-  font-size: 11px;
-}
-
-@media (max-width: 720px) {
-  .sib-row {
-    grid-template-columns: 50px 1fr;
-    gap: 6px;
-  }
-  .sib-date, .sib-jobno, .sib-amount, .sib-link {
-    grid-column: 2;
-  }
-  .sib-amount, .sib-link { text-align: left; }
-  .sib-row-main::before { display: none; }
-}
-.history-loading {
-  font-size: 13px;
-  color: var(--text-soft);
-  text-align: center;
-  padding: 10px 0;
-}
-.history-header {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed var(--border);
-}
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.hist-row {
-  display: grid;
-  grid-template-columns: 16px 90px 130px 1fr 70px;
-  gap: 10px;
-  align-items: center;
-  padding: 8px 6px;
-  font-size: 13px;
-  border-radius: 3px;
-  text-decoration: none;
-  color: inherit;
-  transition: background 0.12s ease;
-}
-.hist-row:hover { background: var(--surface); }
-.hist-row:hover .hist-link { color: var(--accent); }
-.hist-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-left: 4px;
-}
-.hist-date {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-soft);
-}
-.hist-type {
-  font-size: 12px;
-  color: var(--text);
-  font-weight: 500;
-}
-.hist-meta {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  font-size: 12px;
-  color: var(--text-soft);
-}
-.hist-amount {
-  font-family: var(--mono);
-  font-weight: 500;
-  color: var(--text);
-}
-.hist-company {
-  color: var(--award);
-  font-weight: 500;
-}
-.hist-link {
-  text-align: right;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-soft);
-  transition: color 0.12s ease;
-}
-
-@media (max-width: 720px) {
-  .hist-row {
-    grid-template-columns: 8px 1fr;
-    gap: 6px;
-  }
-  .hist-date, .hist-type, .hist-meta, .hist-link {
-    grid-column: 2;
-  }
-  .hist-link { text-align: left; }
-}
-
-.tender-card-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-.tag {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  padding: 3px 8px;
-  border-radius: 3px;
-}
+.tender-card-main { padding: 18px 22px 14px; cursor: pointer; }
+.tender-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.tag { font-family: var(--mono); font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 3px; letter-spacing: 0.06em; }
 .tag-tender { background: var(--tender-soft); color: var(--tender); }
 .tag-award { background: var(--award-soft); color: var(--award); }
 .tag-rental { background: var(--rental-soft); color: var(--rental); }
 .tag-sell { background: var(--sell-soft); color: var(--sell); }
 .tag-amend { background: var(--amend-soft); color: var(--amend); }
 .tag-other { background: var(--other-soft); color: var(--other); }
+.tender-date { font-family: var(--mono); font-size: 12px; color: var(--text-soft); }
+.tender-amount { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent); margin-left: auto; }
+.tender-title { font-family: var(--serif); font-size: 17px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+.tender-unit { font-size: 13px; color: var(--text-soft); }
+.tender-unit::before { content:'·'; margin-right: 6px; }
 
-.type-checkboxes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.type-cb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  cursor: pointer;
-  transition: all 0.12s ease;
-  font-size: 12px;
-}
-.type-cb:hover { background: var(--surface-soft); border-color: var(--border-strong); }
-.type-cb input { margin: 0; cursor: pointer; accent-color: var(--text); }
-.type-cb:has(input:checked) { background: var(--surface); border-color: var(--text); }
-.type-cb-tag {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-.type-cb-tag.type-tender { background: var(--tender-soft); color: var(--tender); }
-.type-cb-tag.type-award { background: var(--award-soft); color: var(--award); }
-.type-cb-tag.type-rental { background: var(--rental-soft); color: var(--rental); }
-.type-cb-tag.type-sell { background: var(--sell-soft); color: var(--sell); }
-.type-cb-tag.type-amend { background: var(--amend-soft); color: var(--amend); }
-.type-cb-tag.type-other { background: var(--other-soft); color: var(--other); }
+/* Card meta row (截標/開標/金額) */
+.tender-meta { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; }
+.meta-item { display: inline-flex; align-items: baseline; gap: 5px; }
+.meta-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); font-weight: 600; }
+.meta-val { font-family: var(--mono); font-size: 12px; color: var(--text); font-weight: 500; }
+.meta-val.urgent { color: var(--accent); font-weight: 700; }
+.meta-val.urgent::after { content: ' ⚠'; font-size: 11px; }
+.meta-na { color: var(--text-faint); font-size: 11px; font-style: italic; }
 
-.type-quick {
-  display: flex;
-  gap: 4px;
-}
-.type-quick button {
-  flex: 1;
-  padding: 5px 4px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-family: var(--sans);
-  font-size: 11px;
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-.type-quick button:hover { background: var(--surface-soft); color: var(--text); }
+/* Siblings badge & bar */
+.sib-badge { font-family: var(--mono); font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 3px; background: #fef3c7; color: #92400e; margin-left: auto; }
+.tender-sib-bar { padding: 0 22px 14px; margin-top: -4px; }
+.tender-sib-bar button { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: #fef3c7; color: #78350f; border: none; border-radius: 12px; font-family: var(--sans); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s; }
+.tender-sib-bar button:hover { background: #fde68a; }
 
-.tender-date {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-faint);
-}
-.tender-amount {
-  margin-left: auto;
-  font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-}
+/* Siblings expand */
+.tender-siblings { margin: 0 20px 12px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius); }
+.sib-header { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: #92400e; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed #fde68a; }
+.sib-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: none; background: none; width: 100%; text-align: left; font-family: var(--sans); font-size: 12px; color: var(--text); cursor: pointer; border-radius: 4px; transition: background 0.12s; }
+.sib-row:hover { background: rgba(254,243,199,0.6); }
+.sib-row-main { background: rgba(254,243,199,0.4); font-weight: 500; }
+.sib-date { font-family: var(--mono); font-size: 11px; color: var(--text-soft); }
+.sib-amount { font-family: var(--mono); font-weight: 500; margin-left: auto; }
+.sib-arrow { color: var(--text-faint); font-size: 11px; opacity: 0.4; }
+.sib-row:hover .sib-arrow { opacity: 1; color: var(--accent); }
 
-.tender-title {
-  font-family: var(--serif);
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1.45;
-  margin-bottom: 6px;
-  color: var(--text);
-}
-.tender-title:hover { color: var(--accent); }
+/* Detail panel */
+.detail-overlay { position: fixed; inset: 0; background: rgba(28,28,26,0.32); backdrop-filter: blur(2px); opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 200; }
+.detail-overlay.show { opacity: 1; pointer-events: auto; }
+.detail-panel { position: fixed; top: 0; right: 0; width: 520px; max-width: calc(100vw - 20px); height: 100vh; background: var(--bg); border-left: 1px solid var(--border); box-shadow: -12px 0 48px rgba(28,28,26,0.1); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0.24,1); z-index: 201; display: flex; flex-direction: column; }
+.detail-panel.show { transform: translateX(0); }
+.detail-head { padding: 22px 26px 18px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; background: var(--surface); }
+.detail-head-info { flex: 1; min-width: 0; }
+.detail-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+.detail-title { font-family: var(--serif); font-size: 20px; font-weight: 600; line-height: 1.35; margin-bottom: 8px; }
+.detail-unit { font-size: 13px; color: var(--text-soft); font-weight: 500; }
+.detail-close { border: 1px solid var(--border); background: var(--surface); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 16px; color: var(--text-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+.detail-close:hover { background: var(--text); color: var(--surface); border-color: var(--text); transform: rotate(90deg); }
 
-.tender-unit {
-  font-size: 13px;
-  color: var(--text-soft);
-}
-.tender-unit::before {
-  content: '';
-  display: inline-block;
-  width: 3px;
-  height: 3px;
-  background: var(--text-faint);
-  border-radius: 50%;
-  margin-right: 8px;
-  vertical-align: middle;
-}
+.detail-body { flex: 1; overflow-y: auto; padding: 0 26px 26px; }
+.detail-body::-webkit-scrollbar { width: 6px; }
+.detail-body::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 
-.tender-meta-row {
-  margin-top: 10px;
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  align-items: center;
-  padding-top: 10px;
-  border-top: 1px dashed var(--border);
-}
-.meta-loading {
-  color: var(--text-faint);
-  font-size: 11px;
-  font-style: italic;
-}
-.meta-na {
-  color: var(--text-faint);
-  font-size: 11px;
-}
-.meta-item {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-.meta-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  font-weight: 600;
-}
-.meta-value {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text);
-  font-weight: 500;
-}
-.meta-value.urgent {
-  color: var(--accent);
-  font-weight: 700;
-}
-.meta-value.urgent::after {
-  content: ' ⚠';
-  font-family: var(--sans);
-  font-size: 11px;
-}
-.meta-value.meta-amount {
-  color: var(--award);
-}
+/* Detail hero cards */
+.detail-hero { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hero-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.hero-item.urgent { background: var(--accent-soft); border-color: #fecaca; }
+.hero-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px; }
+.hero-value { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--text); }
+.hero-item.urgent .hero-value { color: var(--accent); }
 
-/* ============ Empty / Loading ============ */
-.state {
-  padding: 80px 20px;
-  text-align: center;
-}
-.state-icon {
-  font-family: var(--serif);
-  font-size: 56px;
-  font-weight: 600;
-  color: var(--border-strong);
-  margin-bottom: 16px;
-  line-height: 1;
-  letter-spacing: -0.02em;
-}
-.state-title {
-  font-family: var(--serif);
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-.state-desc {
-  font-size: 13px;
-  color: var(--text-soft);
-  max-width: 400px;
-  margin: 0 auto;
-  line-height: 1.7;
-}
+/* Detail sections */
+.detail-section { margin-top: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+.detail-sec-title { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-soft); margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+.detail-grid { display: flex; flex-direction: column; gap: 12px; }
+.d-row { display: grid; grid-template-columns: 100px 1fr; gap: 4px 14px; align-items: baseline; font-size: 13px; }
+.d-row.long { grid-template-columns: 1fr; }
+.d-row dt { color: var(--text-faint); font-size: 11px; margin: 0; }
+.d-row.long dt { border-left: 2px solid var(--border-strong); padding-left: 8px; font-weight: 500; }
+.d-row dd { color: var(--text); margin: 0; word-break: break-word; white-space: pre-line; line-height: 1.6; }
+.d-row.long dd { padding-left: 10px; }
+.d-row dd.amt { font-family: var(--mono); font-weight: 600; color: var(--accent); font-size: 15px; }
+.d-row dd.co { color: var(--award); font-weight: 500; }
+.d-row dd.tm { font-family: var(--mono); font-weight: 500; }
 
-.spinner {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--text);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+/* Timeline in detail panel */
+.detail-tl { padding: 0; overflow: hidden; }
+.tl-toggle { display: flex; align-items: center; gap: 8px; width: 100%; padding: 14px 18px; border: none; background: transparent; cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-soft); text-align: left; transition: background 0.12s; }
+.tl-toggle:hover { background: var(--surface-soft); }
+.tl-toggle-arrow { margin-left: auto; font-size: 12px; }
+.tl-item { border-bottom: 1px solid var(--border); }
+.tl-item:last-child { border-bottom: none; }
+.tl-row { display: grid; grid-template-columns: 24px 1fr 44px; gap: 8px; padding: 12px 18px; border: none; background: transparent; width: 100%; text-align: left; font-family: inherit; font-size: inherit; color: inherit; cursor: pointer; transition: background 0.12s; }
+.tl-row:hover { background: var(--surface-soft); }
+.tl-row.tl-latest { background: rgba(254,243,199,0.35); }
+.tl-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; }
+.tl-type { font-size: 13px; font-weight: 500; }
+.tl-tag-latest { font-family: var(--mono); font-size: 9px; font-weight: 600; padding: 2px 6px; background: #fef3c7; color: #78350f; border-radius: 3px; }
+.tl-meta { display: flex; gap: 10px; font-size: 12px; margin-top: 2px; }
+.tl-date { font-family: var(--mono); color: var(--text-soft); }
+.tl-amt { font-family: var(--mono); font-weight: 600; color: var(--accent); }
+.tl-co { font-size: 12px; color: var(--award); font-weight: 500; margin-top: 2px; }
+.tl-arrow { font-size: 11px; font-weight: 500; color: var(--text-faint); align-self: center; text-align: right; opacity: 0.4; transition: all 0.12s; }
+.tl-row:hover .tl-arrow { opacity: 1; color: var(--accent); }
+.tl-expand { background: var(--bg); border-top: 1px dashed var(--border); padding: 14px 18px 14px 50px; }
+.tl-d-row { display: grid; grid-template-columns: 90px 1fr; gap: 4px 12px; font-size: 12px; margin-bottom: 6px; }
+.tl-d-row.long { grid-template-columns: 1fr; }
+.tl-d-label { color: var(--text-faint); font-size: 11px; }
+.tl-d-value { color: var(--text); white-space: pre-line; word-break: break-word; line-height: 1.5; }
 
-/* ============ Toast ============ */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--text);
-  color: var(--surface);
-  padding: 10px 18px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  box-shadow: var(--shadow);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-  z-index: 100;
-}
+/* Detail actions */
+.detail-actions { padding: 16px 26px; border-top: 1px solid var(--border); display: flex; gap: 10px; background: var(--surface); }
+.detail-actions a { flex: 1; text-align: center; padding: 10px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+.detail-actions .act-primary { background: var(--text); color: var(--surface); }
+.detail-actions .act-primary:hover { background: #000; }
+.detail-actions .act-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+
+/* Cache badge */
+.cache-badge { position: fixed; bottom: 20px; right: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-family: var(--mono); font-size: 12px; color: var(--text-soft); box-shadow: var(--shadow); z-index: 90; }
+.cache-badge span { color: var(--accent); font-weight: 600; }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--surface); padding: 10px 18px; border-radius: 6px; font-size: 13px; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 300; }
 .toast.show { opacity: 1; }
 
-/* ============ 詳情側邊面板 ============ */
-.detail-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(28, 28, 26, 0.32);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-  z-index: 200;
-}
-.detail-overlay.show {
-  opacity: 1;
-  pointer-events: auto;
-}
-.detail-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 520px;
-  max-width: calc(100vw - 32px);
-  height: 100vh;
-  background: var(--bg);
-  border-left: 1px solid var(--border);
-  box-shadow: -12px 0 48px rgba(28, 28, 26, 0.12);
-  transform: translateX(100%);
-  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0.24, 1);
-  z-index: 201;
-  display: flex;
-  flex-direction: column;
-}
-.detail-panel.show { transform: translateX(0); }
+/* Empty state */
+.state { text-align: center; padding: 60px 20px; color: var(--text-soft); }
+.state-icon { font-size: 32px; margin-bottom: 12px; }
+.state-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+.state-desc { font-size: 13px; line-height: 1.7; }
 
-.detail-head {
-  padding: 24px 28px 20px;
-  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  position: relative;
-}
-.detail-head::after {
-  content: '';
-  position: absolute;
-  left: 28px;
-  right: 28px;
-  bottom: -1px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent 0%, var(--border-strong) 50%, transparent 100%);
-}
-.detail-head-info {
-  flex: 1;
-  min-width: 0;
-}
-.detail-head-eyebrow {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-.detail-head-title {
-  font-family: var(--serif);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.35;
-  margin-bottom: 10px;
-  color: var(--text);
-  letter-spacing: -0.01em;
-}
-.detail-head-sub {
-  font-size: 13px;
-  color: var(--text-soft);
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  align-items: center;
-  line-height: 1.55;
-}
-.detail-head-sub .unit-name {
-  font-weight: 500;
-  color: var(--text);
-}
-.detail-close {
-  border: none;
-  background: var(--surface);
-  font-size: 16px;
-  cursor: pointer;
-  color: var(--text-soft);
-  padding: 8px 12px;
-  border-radius: 50%;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-.detail-close:hover {
-  background: var(--text);
-  color: var(--surface);
-  border-color: var(--text);
-  transform: rotate(90deg);
-}
-
-.detail-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 28px 22px;
-}
-.detail-body::-webkit-scrollbar { width: 8px; }
-.detail-body::-webkit-scrollbar-track { background: transparent; }
-.detail-body::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 4px;
-}
-.detail-body::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
-
-.detail-section {
-  margin-top: 24px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 18px 20px;
-  box-shadow: var(--shadow-sm);
-}
-.detail-section-title {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-.detail-section-title .section-icon {
-  font-size: 14px;
-  filter: grayscale(0.3);
-}
-.detail-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  font-size: 13px;
-}
-.detail-grid-row {
-  display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 4px 18px;
-  align-items: baseline;
-}
-.detail-grid-row.long {
-  grid-template-columns: 1fr;
-  gap: 4px;
-}
-.detail-grid dt {
-  color: var(--text-faint);
-  font-size: 11px;
-  padding-top: 3px;
-  letter-spacing: 0.02em;
-  line-height: 1.5;
-  margin: 0;
-}
-.detail-grid-row.long dt {
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0;
-  padding-bottom: 2px;
-  border-left: 2px solid var(--border-strong);
-  padding-left: 8px;
-}
-.detail-grid dd {
-  color: var(--text);
-  margin: 0;
-  word-break: break-word;
-  white-space: pre-line;
-  line-height: 1.6;
-}
-.detail-grid-row.long dd {
-  padding-left: 10px;
-  font-size: 13px;
-  line-height: 1.7;
-}
-.detail-grid dd.amount {
-  font-family: var(--mono);
-  font-weight: 600;
-  color: var(--accent);
-  font-size: 15px;
-  letter-spacing: -0.01em;
-}
-.detail-grid dd.company {
-  color: var(--award);
-  font-weight: 500;
-}
-.detail-grid dd.time {
-  font-family: var(--mono);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-}
-
-.detail-hero {
-  margin-top: 22px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.detail-hero-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px 16px;
-  box-shadow: var(--shadow-sm);
-}
-.detail-hero-item.urgent {
-  background: var(--accent-soft);
-  border-color: #fecaca;
-}
-.detail-hero-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  margin-bottom: 6px;
-}
-.detail-hero-value {
-  font-family: var(--mono);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-}
-.detail-hero-item.urgent .detail-hero-value {
-  color: var(--accent);
-}
-
-.detail-multi-notice {
-  margin-top: 22px;
-  padding: 12px 16px;
-  background: #fef3c7;
-  border: 1px solid #fde68a;
-  border-radius: 8px;
-  font-size: 12px;
-  color: #78350f;
-  line-height: 1.6;
-}
-
-/* 本案所有公告:時間軸 */
-.detail-timeline {
-  padding: 0;
-  overflow: hidden;
-}
-.detail-section-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 16px 20px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-  text-align: left;
-  transition: background 0.12s ease;
-}
-.detail-section-toggle:hover { background: var(--surface-soft); }
-.toggle-arrow {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--text-faint);
-}
-.tl-list {
-  display: flex;
-  flex-direction: column;
-}
-.tl-item {
-  border-bottom: 1px solid var(--border);
-}
-.tl-item:last-child { border-bottom: none; }
-.tl-row {
-  display: grid;
-  grid-template-columns: 28px 1fr 50px;
-  gap: 8px;
-  padding: 14px 20px;
-  text-decoration: none;
-  color: inherit;
-  border: none;
-  background: transparent;
-  transition: background 0.12s ease;
-  position: relative;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  font-size: inherit;
-  width: 100%;
-}
-.tl-row:last-child { border-bottom: none; }
-.tl-row:hover { background: var(--surface-soft); }
-.tl-row.tl-latest { background: rgba(254, 243, 199, 0.35); }
-.tl-row.tl-latest:hover { background: rgba(254, 243, 199, 0.55); }
-.tl-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-top: 5px;
-  box-shadow: 0 0 0 3px var(--surface);
-}
-.tl-content {
-  min-width: 0;
-}
-.tl-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 3px;
-}
-.tl-type {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-}
-.tl-tag-latest {
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  padding: 2px 6px;
-  background: #fef3c7;
-  color: #78350f;
-  border-radius: 3px;
-}
-.tl-meta {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  font-size: 12px;
-}
-.tl-date {
-  font-family: var(--mono);
-  color: var(--text-soft);
-}
-.tl-amount {
-  font-family: var(--mono);
-  font-weight: 600;
-  color: var(--accent);
-}
-.tl-company {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--award);
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tl-arrow {
-  color: var(--text-faint);
-  font-size: 11px;
-  font-weight: 500;
-  align-self: center;
-  text-align: right;
-  opacity: 0.4;
-  transition: all 0.12s ease;
-}
-.tl-row:hover .tl-arrow {
-  opacity: 1;
-  color: var(--accent);
-}
-
-.tl-expand {
-  background: var(--bg);
-  border-top: 1px dashed var(--border);
-  padding: 14px 20px 14px 56px;
-}
-.tl-detail-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.tl-detail-row {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  gap: 4px 14px;
-  font-size: 12px;
-  align-items: baseline;
-}
-.tl-detail-row.long {
-  grid-template-columns: 1fr;
-  gap: 4px;
-}
-.tl-detail-label {
-  color: var(--text-faint);
-  font-size: 11px;
-}
-.tl-detail-row.long .tl-detail-label {
-  border-left: 2px solid var(--border-strong);
-  padding-left: 8px;
-  font-weight: 500;
-}
-.tl-detail-value {
-  color: var(--text);
-  word-break: break-word;
-  white-space: pre-line;
-  line-height: 1.6;
-}
-.tl-detail-row.long .tl-detail-value {
-  padding-left: 10px;
-}
-
-.detail-loading {
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--text-soft);
-}
-.detail-error {
-  margin: 40px 0;
-  padding: 24px;
-  background: var(--accent-soft);
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  color: var(--accent);
-  font-size: 13px;
-  text-align: center;
-  line-height: 1.7;
-}
-
-.detail-actions {
-  padding: 18px 28px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-  background: var(--surface);
-  box-shadow: 0 -4px 16px rgba(28, 28, 26, 0.04);
-}
-.detail-actions a {
-  flex: 1;
-  text-align: center;
-  padding: 11px 14px;
-  background: var(--text);
-  color: var(--surface);
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 500;
-  transition: all 0.15s ease;
-  letter-spacing: 0.02em;
-}
-.detail-actions a:hover { background: #000; transform: translateY(-1px); }
-.detail-actions a.secondary {
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-.detail-actions a.secondary:hover {
-  background: var(--surface-soft);
-  border-color: var(--border-strong);
-}
-
-.btn-detail {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: var(--sans);
-  font-size: 12px;
-  color: var(--accent);
-  cursor: pointer;
-  font-weight: 500;
-}
-.btn-detail:hover { text-decoration: underline; }
-
-/* 載入計數徽章(右下角) */
-.cache-badge {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 12px;
-  color: var(--text-soft);
-  box-shadow: var(--shadow);
-  z-index: 90;
-  font-family: var(--mono);
-  letter-spacing: 0.03em;
-}
-.cache-badge span {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-@media (max-width: 720px) {
-  .detail-panel {
-    width: 100%;
-    max-width: 100%;
-  }
-  .detail-grid {
-    grid-template-columns: 80px 1fr;
-    gap: 6px 10px;
-  }
-}
-
-/* ============ Responsive ============ */
-@media (max-width: 980px) {
-  .app { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
-  .stats { grid-template-columns: repeat(2, 1fr); }
-  .main { padding: 20px; }
-  .topbar { padding: 16px 20px; }
-}
-@media (max-width: 560px) {
-  .page-title { font-size: 22px; }
+@media (max-width: 860px) {
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .main { padding: 16px; }
   .stats { grid-template-columns: 1fr 1fr; }
-  .tender-amount { margin-left: 0; width: 100%; margin-top: 4px; }
-  .tender-card-top { flex-wrap: wrap; }
+  .detail-panel { width: 100%; max-width: 100%; }
 }
 </style>
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">標案探勘<span class="dot">.</span><span class="brand-sub">Tender Explorer</span></div>
-  <div class="topbar-meta" id="topbar-meta">Ready</div>
-</header>
+<div class="topbar">
+  <span>政府標案探勘 — 即時搜尋工具</span>
+  <span id="topbar-meta">準備就緒</span>
+</div>
 
-<div class="app">
-
+<div class="layout">
+  <!-- Sidebar -->
   <aside class="sidebar">
+    <div class="sb-brand">政府標案<em>探勘</em></div>
+    <div class="sb-desc">從 g0v 開放標案資料庫即時查詢,所有條件可組合篩選。</div>
 
     <div class="sb-section">
       <label class="sb-label">主要關鍵字</label>
-      <input type="text" class="sb-input" id="query" placeholder="例:資訊、採購、工程" value="資訊">
+      <input class="sb-input" id="query" value="資訊" placeholder="向資料源查詢時用,建議寬鬆一點。">
       <div class="sb-hint">向資料源查詢時用,建議寬鬆一點。</div>
     </div>
-
     <div class="sb-section">
-      <label class="sb-label">必須包含的字 <span style="text-transform:none;letter-spacing:0;color:var(--text-faint);">(且)</span></label>
-      <input type="text" class="sb-input" id="include" placeholder="多個用逗號分隔">
-      <div class="sb-hint">標題必須「全部」包含,例:資訊, 系統</div>
+      <label class="sb-label">必須包含的字（且）</label>
+      <input class="sb-input" id="include" placeholder="標題必須「全部」包含,例:資訊,系統">
+      <div class="sb-hint">多個用逗號分隔</div>
     </div>
-
     <div class="sb-section">
-      <label class="sb-label">排除的字 <span style="text-transform:none;letter-spacing:0;color:var(--text-faint);">(不要)</span></label>
-      <input type="text" class="sb-input" id="exclude" placeholder="多個用逗號分隔" value="維護, 保養">
+      <label class="sb-label">排除的字（不要）</label>
+      <input class="sb-input" id="exclude" value="維護, 保養" placeholder="多個用逗號分隔">
       <div class="sb-hint">標題出現任一個就排除。</div>
     </div>
-
     <div class="sb-section">
       <label class="sb-label">機關名稱</label>
-      <input type="text" class="sb-input" id="unit" placeholder="例:臺中">
+      <input class="sb-input" id="unit" placeholder="例:臺中">
       <div class="sb-hint">政府用「臺」不是「台」。</div>
     </div>
-
     <div class="sb-section">
       <label class="sb-label">公告日期範圍</label>
-      <div class="date-quick">
-        <button type="button" data-days="7">7 天</button>
-        <button type="button" data-days="30">30 天</button>
-        <button type="button" data-days="90">90 天</button>
-        <button type="button" data-days="0">全部</button>
+      <div class="date-quick" id="date-quick">
+        <button data-days="7">7 天</button>
+        <button data-days="30">30 天</button>
+        <button data-days="90">90 天</button>
+        <button data-days="">全部</button>
       </div>
-      <div class="date-range">
-        <input type="date" class="sb-input" id="date-from">
-        <span class="date-sep">到</span>
-        <input type="date" class="sb-input" id="date-to">
+      <div class="date-row">
+        <input class="sb-input" type="date" id="date-from"> <span>到</span> <input class="sb-input" type="date" id="date-to">
       </div>
       <div class="sb-hint">留空代表不限。快速鈕會自動填入日期。</div>
     </div>
-
     <div class="sb-section">
-      <label class="sb-label">公告類型 <span style="text-transform:none;letter-spacing:0;color:var(--text-faint);">(可複選)</span></label>
+      <label class="sb-label">公告類型 <span style="text-transform:none;letter-spacing:0;color:var(--text-faint)">(可複選)</span></label>
       <div class="type-checkboxes" id="type-group">
-        <label class="type-cb"><input type="checkbox" value="tender" checked><span class="type-cb-tag type-tender">招標</span></label>
-        <label class="type-cb"><input type="checkbox" value="award" checked><span class="type-cb-tag type-award">決標</span></label>
-        <label class="type-cb"><input type="checkbox" value="rental"><span class="type-cb-tag type-rental">財物出租</span></label>
-        <label class="type-cb"><input type="checkbox" value="sell"><span class="type-cb-tag type-sell">財物變賣</span></label>
-        <label class="type-cb"><input type="checkbox" value="amend"><span class="type-cb-tag type-amend">更正</span></label>
-        <label class="type-cb"><input type="checkbox" value="other"><span class="type-cb-tag type-other">其他</span></label>
+        <label class="type-cb"><input type="checkbox" value="tender" checked><span class="type-cb-tag t-tender">招標</span></label>
+        <label class="type-cb"><input type="checkbox" value="award" checked><span class="type-cb-tag t-award">決標</span></label>
+        <label class="type-cb"><input type="checkbox" value="rental"><span class="type-cb-tag t-rental">財物出租</span></label>
+        <label class="type-cb"><input type="checkbox" value="sell"><span class="type-cb-tag t-sell">財物變賣</span></label>
+        <label class="type-cb"><input type="checkbox" value="amend"><span class="type-cb-tag t-amend">更正</span></label>
+        <label class="type-cb"><input type="checkbox" value="other"><span class="type-cb-tag t-other">其他</span></label>
       </div>
       <div class="type-quick">
-        <button type="button" id="type-all">全選</button>
-        <button type="button" id="type-none">全不選</button>
-        <button type="button" id="type-reset">預設</button>
+        <button id="type-all">全選</button>
+        <button id="type-none">全不選</button>
+        <button id="type-reset">預設</button>
       </div>
     </div>
-
     <div class="sb-section">
       <label class="sb-label">抓取頁數</label>
       <select class="sb-select" id="pages">
-        <option value="1">1 頁(約 100 筆)</option>
+        <option value="1">1 頁（約 100 筆）</option>
         <option value="2">2 頁</option>
-        <option value="3" selected>3 頁(推薦)</option>
+        <option value="3" selected>3 頁</option>
         <option value="5">5 頁</option>
-        <option value="10">10 頁(較慢)</option>
       </select>
     </div>
-
-    <button class="btn-search" id="btn-search">開始搜尋</button>
-    <button class="btn-reset" id="btn-reset">重置條件</button>
-
+    <div class="sb-actions">
+      <button class="btn-primary" id="btn-search">開始搜尋</button>
+      <button class="btn-secondary" id="btn-export" disabled>匯出 CSV</button>
+      <button class="btn-secondary" id="btn-reset">重置</button>
+    </div>
   </aside>
 
+  <!-- Main -->
   <main class="main">
-
-    <div class="page-head">
-      <div>
-        <h1 class="page-title">政府標案<span class="accent">探勘</span></h1>
-        <div class="page-sub">從 g0v 開放標案資料庫即時查詢,所有條件可組合篩選。</div>
-      </div>
-      <div class="page-actions">
-        <button class="btn-ghost" id="btn-export" disabled>匯出 CSV</button>
-      </div>
-    </div>
-
     <div class="stats">
       <div class="stat"><div class="stat-label">符合條件</div><div class="stat-value" id="s-total">—</div></div>
       <div class="stat"><div class="stat-label">招標公告</div><div class="stat-value" id="s-tender">—</div></div>
       <div class="stat"><div class="stat-label">決標公告</div><div class="stat-value" id="s-award">—</div></div>
       <div class="stat accent"><div class="stat-label">總金額</div><div class="stat-value" id="s-amount">—</div></div>
     </div>
-
-    <div class="results">
-      <div class="result-head">
-        <div class="result-head-title" id="result-head-title">結果列表</div>
-        <div class="result-sort">
-          排序:
-          <select id="sort">
-            <option value="date-desc">日期新→舊</option>
-            <option value="date-asc">日期舊→新</option>
-            <option value="amount-desc">金額高→低</option>
-            <option value="amount-asc">金額低→高</option>
-          </select>
-        </div>
-      </div>
-      <div id="result-body">
-        <div class="state">
-          <div class="state-icon">標</div>
-          <div class="state-title">準備好開始了</div>
-          <div class="state-desc">在左側填好你想找的條件,按「開始搜尋」。資料來自 g0v 開放標案 API,大約涵蓋近兩年公告。</div>
-        </div>
-      </div>
+    <div class="result-head">
+      <span class="result-head-title" id="result-head-title">結果列表</span>
+      <select class="sb-select" id="sort" style="width:auto;">
+        <option value="date-desc">日期新→舊</option>
+        <option value="date-asc">日期舊→新</option>
+        <option value="amount-desc">金額高→低</option>
+        <option value="amount-asc">金額低→高</option>
+      </select>
     </div>
-
+    <div class="result-body" id="result-body">
+      <div class="state"><div class="state-icon">🔍</div><div class="state-title">輸入關鍵字開始搜尋</div><div class="state-desc">從左側填寫條件後按「開始搜尋」</div></div>
+    </div>
   </main>
 </div>
 
-<div class="toast" id="toast"></div>
-
-<!-- 側邊面板:標案詳情 -->
+<!-- Detail panel -->
 <div class="detail-overlay" id="detail-overlay"></div>
-<aside class="detail-panel" id="detail-panel" aria-hidden="true">
+<aside class="detail-panel" id="detail-panel">
   <div class="detail-head">
     <div class="detail-head-info" id="detail-head-info"></div>
-    <button class="detail-close" id="detail-close" aria-label="關閉">✕</button>
+    <button class="detail-close" id="detail-close">✕</button>
   </div>
   <div class="detail-body" id="detail-body"></div>
 </aside>
 
-<!-- 載入計數徽章(角落顯示已快取的筆數) -->
-<div class="cache-badge" id="cache-badge" style="display:none;">
-  <span id="cache-badge-count">0</span> 筆詳情已載入
-</div>
+<!-- Cache badge -->
+<div class="cache-badge" id="cache-badge" style="display:none;"><span id="cache-count">0</span> 筆已載入</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
+// ==========================================
+// 標案探勘 — 完整重建版
+// ==========================================
 const API = 'https://pcc-api.openfun.app/api/searchbytitle';
-const STORAGE_KEY = 'tender_explorer_v1';
-
+const STORAGE_KEY = 'tender_explorer_v2';
 const $ = id => document.getElementById(id);
-let currentResults = [];
-let currentTypes = new Set(['tender', 'award']); // 預設只勾招標+決標
+const escHtml = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// 依公告 type 字串分類成 typeKey
-function classifyType(typeStr) {
-  const t = typeStr || '';
+let currentResults = [];
+let currentTypes = new Set(['tender','award']);
+window._searchId = 0;
+
+// ----- Utilities -----
+function parseList(s) { return String(s||'').split(/[,,]/).map(x=>x.trim()).filter(Boolean); }
+
+function classifyType(t) {
+  t = t || '';
   if (t.indexOf('更正') !== -1) return 'amend';
   if (t.indexOf('決標') !== -1 || t.indexOf('無法決標') !== -1 || t.indexOf('廢標') !== -1) return 'award';
   if (t.indexOf('財物出租') !== -1 || (t.indexOf('出租') !== -1 && t.indexOf('招標') === -1)) return 'rental';
@@ -1554,54 +389,123 @@ function classifyType(typeStr) {
   return 'other';
 }
 
-// type-cb checkbox 變動時更新 currentTypes
-document.querySelectorAll('#type-group input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener('change', () => {
-    if (cb.checked) currentTypes.add(cb.value);
-    else currentTypes.delete(cb.value);
-    saveSettings();
-  });
-});
+const typeLabels = {tender:'招標',award:'決標',rental:'出租',sell:'變賣',amend:'更正',other:'其他'};
 
-function syncTypeCheckboxes() {
-  document.querySelectorAll('#type-group input[type="checkbox"]').forEach(cb => {
-    cb.checked = currentTypes.has(cb.value);
-  });
+function fmtDate(d) {
+  d = String(d||'');
+  return d.length === 8 ? d.substr(0,4)+'.'+d.substr(4,2)+'.'+d.substr(6,2) : d;
 }
 
-document.getElementById('type-all').addEventListener('click', () => {
-  document.querySelectorAll('#type-group input[type="checkbox"]').forEach(cb => {
-    cb.checked = true;
-    currentTypes.add(cb.value);
+function fmtMoney(n) {
+  n = Number(n);
+  if (!n || isNaN(n)) return '';
+  if (n >= 100000000) return 'NT$ ' + (n/100000000).toFixed(1) + ' 億';
+  if (n >= 10000) return 'NT$ ' + (n/10000).toFixed(1) + ' 萬';
+  return 'NT$ ' + n.toLocaleString();
+}
+
+function fmtTotalAmount(n) {
+  if (!n) return '—';
+  return fmtMoney(n);
+}
+
+function fmtTimeStr(raw) {
+  if (!raw) return '';
+  raw = String(raw).trim();
+  if (raw.indexOf('/') !== -1) return raw;
+  const m = raw.match(/^(\d{3})(\d{2})(\d{2})(\d{2})?(\d{2})?/);
+  if (m) { let s = m[1]+'/'+m[2]+'/'+m[3]; if (m[4]) s += ' '+m[4]+(m[5]?':'+m[5]:''); return s; }
+  return raw;
+}
+
+function isUrgent(ts) {
+  if (!ts) return false;
+  const m = ts.match(/^(\d{3})\/(\d{2})\/(\d{2})/);
+  if (!m) return false;
+  const t = new Date(parseInt(m[1])+1911, parseInt(m[2])-1, parseInt(m[3]));
+  return (t - new Date()) / 86400000 >= 0 && (t - new Date()) / 86400000 <= 7;
+}
+
+function looksLikeAmount(v) {
+  if (!v) return false;
+  const s = String(v);
+  if (/^[是否不公開無未填]+$/.test(s.trim())) return false;
+  return (s.match(/\d/g)||[]).length >= 4;
+}
+
+function getAmount(rec) {
+  const b = rec.brief || {};
+  const candidates = [b.companies&&b.companies.amount, b.amount, b.budget, b.award_amount, rec.amount];
+  for (const v of candidates) { if (v != null) { const n = Number(v); if (!isNaN(n) && n > 0 && String(v).length > 3) return n; } }
+  return 0;
+}
+
+function extractCompanies(rec, brief) {
+  const names = new Set();
+  brief = brief || {};
+  const cands = [
+    brief.companies&&brief.companies.names,
+    brief.companies&&brief.companies.name_key&&Object.keys(brief.companies.name_key),
+    brief.companies&&brief.companies.id_key&&Object.values(brief.companies.id_key),
+    rec.companies&&rec.companies.names,
+    brief.award_companies,
+  ];
+  for (const c of cands) {
+    if (!c) continue;
+    if (Array.isArray(c)) c.forEach(x => { if (typeof x==='string'&&x.trim()) names.add(x.trim()); else if (x&&x.name) names.add(x.name.trim()); });
+    else if (typeof c==='string'&&c.trim()) c.split(/[,,、;;]/).forEach(s => { if (s.trim()) names.add(s.trim()); });
+  }
+  return Array.from(names);
+}
+
+function extractAmount(rec, brief) {
+  brief = brief || {};
+  const cands = [brief.companies&&brief.companies.amount, brief.amount, brief.budget, brief.award_amount, rec.amount];
+  for (const v of cands) { if (v!=null) { const n=Number(v); if (!isNaN(n)&&n>0) return n; } }
+  return 0;
+}
+
+function cleanText(v) {
+  return String(v).replace(/\t/g,' ').replace(/\u3000/g,' ').replace(/ {2,}/g,' ').replace(/\n{3,}/g,'\n\n').replace(/^[ \n]+|[ \n]+$/g,'');
+}
+
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ----- Date quick buttons -----
+document.querySelectorAll('#date-quick button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#date-quick button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const days = btn.dataset.days;
+    if (!days) { $('date-from').value = ''; $('date-to').value = ''; return; }
+    const to = new Date(), from = new Date();
+    from.setDate(from.getDate() - parseInt(days));
+    $('date-from').value = from.toISOString().slice(0,10);
+    $('date-to').value = to.toISOString().slice(0,10);
   });
-  saveSettings();
-});
-document.getElementById('type-none').addEventListener('click', () => {
-  document.querySelectorAll('#type-group input[type="checkbox"]').forEach(cb => {
-    cb.checked = false;
-  });
-  currentTypes = new Set();
-  saveSettings();
-});
-document.getElementById('type-reset').addEventListener('click', () => {
-  currentTypes = new Set(['tender', 'award']);
-  syncTypeCheckboxes();
-  saveSettings();
 });
 
-// ----- Save/load settings -----
+// ----- Type checkboxes -----
+document.querySelectorAll('#type-group input').forEach(cb => {
+  cb.addEventListener('change', () => { if (cb.checked) currentTypes.add(cb.value); else currentTypes.delete(cb.value); });
+});
+function syncTypes() { document.querySelectorAll('#type-group input').forEach(cb => { cb.checked = currentTypes.has(cb.value); }); }
+$('type-all').addEventListener('click', () => { document.querySelectorAll('#type-group input').forEach(cb => { cb.checked=true; currentTypes.add(cb.value); }); });
+$('type-none').addEventListener('click', () => { document.querySelectorAll('#type-group input').forEach(cb => { cb.checked=false; }); currentTypes = new Set(); });
+$('type-reset').addEventListener('click', () => { currentTypes = new Set(['tender','award']); syncTypes(); });
+
+// ----- Settings persistence -----
 function saveSettings() {
-  const s = {
-    query: $('query').value,
-    include: $('include').value,
-    exclude: $('exclude').value,
-    unit: $('unit').value,
-    types: Array.from(currentTypes),
-    pages: $('pages').value,
-    dateFrom: $('date-from').value,
-    dateTo: $('date-to').value,
-  };
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    query: $('query').value, include: $('include').value, exclude: $('exclude').value,
+    unit: $('unit').value, types: Array.from(currentTypes), pages: $('pages').value,
+    dateFrom: $('date-from').value, dateTo: $('date-to').value,
+  })); } catch(e) {}
 }
 function loadSettings() {
   try {
@@ -1613,142 +517,77 @@ function loadSettings() {
     if (s.pages) $('pages').value = s.pages;
     if (s.dateFrom !== undefined) $('date-from').value = s.dateFrom;
     if (s.dateTo !== undefined) $('date-to').value = s.dateTo;
-    if (Array.isArray(s.types)) {
-      currentTypes = new Set(s.types);
-      syncTypeCheckboxes();
-    } else if (s.type) {
-      // 舊版單選 fallback
-      if (s.type === 'all') currentTypes = new Set(['tender','award','rental','sell','amend','other']);
-      else if (s.type === 'tender' || s.type === 'award') currentTypes = new Set([s.type]);
-      syncTypeCheckboxes();
-    }
-  } catch (e) {}
+    if (Array.isArray(s.types)) { currentTypes = new Set(s.types); syncTypes(); }
+  } catch(e) {}
 }
 
-// ----- Utils -----
-function parseList(s) {
-  return s.split(/[,,]/).map(x => x.trim()).filter(Boolean);
-}
-function fmtDate(raw) {
-  raw = String(raw || '');
-  if (raw.length === 8) return raw.substr(0,4) + '.' + raw.substr(4,2) + '.' + raw.substr(6,2);
-  return raw;
-}
-function fmtMoney(n) {
-  if (!n || isNaN(n)) return '';
-  const num = Number(n);
-  if (num >= 100000000) return 'NT$ ' + (num / 100000000).toFixed(2) + ' 億';
-  if (num >= 10000) return 'NT$ ' + (num / 10000).toFixed(1) + ' 萬';
-  return 'NT$ ' + num.toLocaleString();
-}
-function fmtTotalAmount(n) {
-  if (!n || n === 0) return '0';
-  if (n >= 100000000) return (n / 100000000).toFixed(1) + '<span class="unit">億</span>';
-  if (n >= 10000) return Math.round(n / 10000).toLocaleString() + '<span class="unit">萬</span>';
-  return n.toLocaleString();
-}
-function getAmount(rec) {
-  const brief = rec.brief || {};
-  const companies = brief.companies || {};
-  if (companies && companies.amount) return Number(companies.amount);
-  if (brief.amount) return Number(brief.amount);
-  return 0;
-}
-
-// ----- Toast -----
-function toast(msg) {
-  const el = $('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), 2400);
-}
-
-// ----- Fetch -----
+// ----- API fetch -----
 async function fetchPage(query, page) {
   const url = `${API}?query=${encodeURIComponent(query)}&page=${page}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error('API ' + res.status);
+  if (!res.ok) throw new Error('API HTTP ' + res.status);
   return await res.json();
 }
 
+// ----- Search -----
 async function search() {
   const query = $('query').value.trim();
   if (!query) { toast('請先填寫主要關鍵字'); return; }
-
   const include = parseList($('include').value);
   const exclude = parseList($('exclude').value);
   const unit = $('unit').value.trim();
   const pages = parseInt($('pages').value);
-  const dateFrom = $('date-from').value;
-  const dateTo = $('date-to').value;
-  const fromRaw = dateFrom ? dateFrom.replace(/-/g, '') : '';
-  const toRaw = dateTo ? dateTo.replace(/-/g, '') : '';
+  const fromRaw = ($('date-from').value || '').replace(/-/g, '');
+  const toRaw = ($('date-to').value || '').replace(/-/g, '');
 
   $('btn-search').disabled = true;
   $('btn-search').textContent = '搜尋中…';
-  $('topbar-meta').innerHTML = '<span class="spinner" style="vertical-align:-4px;"></span> 抓取資料中';
-  $('result-body').innerHTML = `<div class="state"><span class="spinner"></span><div style="margin-top:14px;font-size:13px;color:var(--text-soft);">正在從 g0v 開放資料庫抓取...</div></div>`;
-
+  $('topbar-meta').innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:-3px;"></span> 抓取資料中';
+  $('result-body').innerHTML = '<div class="state"><span class="spinner"></span><div style="margin-top:14px;font-size:13px;color:var(--text-soft);">正在從 g0v 開放資料庫抓取...</div></div>';
   saveSettings();
-  // 給這次搜尋一個 ID，如果使用者重新搜尋，舊的背景抓取會自動停止
+
   const searchId = ++window._searchId;
 
-  // 篩選 + 轉換函式（共用）
   function filterAndMap(records) {
     return records.filter(rec => {
-      const brief = rec.brief || {};
-      const title = brief.title || rec.title || '';
-      const unitName = rec.unit_name || brief.unit_name || '';
-      const recType = brief.type || '';
-      const typeKey = classifyType(recType);
-      const dateRaw = String(rec.date || '');
+      const b = rec.brief || {};
+      const title = b.title || rec.title || '';
+      const uName = rec.unit_name || b.unit_name || '';
+      const tk = classifyType(b.type || '');
+      const d = String(rec.date || '');
       if (currentTypes.size === 0) return false;
-      if (!currentTypes.has(typeKey)) return false;
+      if (!currentTypes.has(tk)) return false;
       for (const w of include) if (title.indexOf(w) === -1) return false;
       for (const w of exclude) if (title.indexOf(w) !== -1) return false;
-      if (unit && unitName.indexOf(unit) === -1) return false;
-      if (fromRaw && dateRaw && dateRaw < fromRaw) return false;
-      if (toRaw && dateRaw && dateRaw > toRaw) return false;
+      if (unit && uName.indexOf(unit) === -1) return false;
+      if (fromRaw && d && d < fromRaw) return false;
+      if (toRaw && d && d > toRaw) return false;
       return true;
     }).map(rec => {
-      const brief = rec.brief || {};
-      const briefType = brief.type || '';
-      const typeKey = classifyType(briefType);
-      const amount = getAmount(rec);
-      const jobNo = rec.job_number || '';
-      const unitId = rec.unit_id || '';
-      const filename = rec.filename || '';
+      const b = rec.brief || {};
+      const tk = classifyType(b.type || '');
+      const fn = rec.filename || '';
       let pccUrl = '';
-      if (filename && rec.date) {
-        pccUrl = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(filename)}.xml`;
-      }
-      const typeLabels = { tender:'招標', award:'決標', rental:'出租', sell:'變賣', amend:'更正', other:'其他' };
+      if (fn && rec.date) pccUrl = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(fn)}.xml`;
       return {
-        title: brief.title || rec.title || '(無標題)',
-        unit: rec.unit_name || brief.unit_name || '',
+        title: b.title || rec.title || '(無標題)',
+        unit: rec.unit_name || b.unit_name || '',
         date: String(rec.date || ''),
-        type: typeKey,
-        typeLabel: typeLabels[typeKey] || '公告',
-        amount: amount,
-        url: pccUrl || `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(unitId)}&job_number=${encodeURIComponent(jobNo)}`,
-        altUrl: `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(unitId)}&job_number=${encodeURIComponent(jobNo)}`,
+        type: tk, typeLabel: typeLabels[tk] || '公告',
+        amount: getAmount(rec),
+        url: pccUrl || `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(rec.unit_id||'')}&job_number=${encodeURIComponent(rec.job_number||'')}`,
+        altUrl: `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(rec.unit_id||'')}&job_number=${encodeURIComponent(rec.job_number||'')}`,
         hasPccUrl: !!pccUrl,
-        unitId: unitId,
-        jobNo: jobNo,
+        unitId: rec.unit_id || '',
+        jobNo: rec.job_number || '',
       };
     });
   }
 
-  let allRaw = [];
-  let failed = false;
-
+  let allRaw = [], failed = false;
   for (let p = 1; p <= pages; p++) {
-    // 如果使用者已經發起新搜尋，停止這次
     if (window._searchId !== searchId) return;
-
-    $('topbar-meta').innerHTML = `<span class="spinner" style="vertical-align:-4px;"></span> 第 ${p} / ${pages} 頁${p > 1 ? '（背景載入中）' : ''}`;
-
+    $('topbar-meta').innerHTML = `<span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:-3px;"></span> 第 ${p}/${pages} 頁`;
     try {
       const data = await fetchPage(query, p);
       const records = data.records || [];
@@ -1756,1165 +595,382 @@ async function search() {
       allRaw = allRaw.concat(records);
     } catch (e) {
       if (p === 1) {
-        // 第一頁就失敗 = 完全沒資料
-        $('result-body').innerHTML = `<div class="state"><div class="state-icon">!</div><div class="state-title">抓取失敗</div><div class="state-desc">${e.message}<br><br>可能原因:網路斷線、API 暫時忙線、或被防火牆擋住。請稍等幾分鐘再試。</div></div>`;
-        $('btn-search').disabled = false;
-        $('btn-search').textContent = '開始搜尋';
-        $('topbar-meta').textContent = 'Error';
-        return;
+        $('result-body').innerHTML = `<div class="state"><div class="state-icon">!</div><div class="state-title">抓取失敗</div><div class="state-desc">${e.message}<br>可能是網路斷線、API 暫時忙線或被防火牆擋住。</div></div>`;
+        $('btn-search').disabled = false; $('btn-search').textContent = '開始搜尋'; $('topbar-meta').textContent = 'Error'; return;
       }
-      // 後續頁失敗，用已有資料繼續
-      failed = true;
-      break;
+      failed = true; break;
     }
-
-    // 每抓完一頁就更新畫面
     if (window._searchId !== searchId) return;
     currentResults = filterAndMap(allRaw);
-    renderResults('full');
+    renderResults();
     $('btn-export').disabled = currentResults.length === 0;
-    const statusSuffix = p < pages ? ' · 背景載入更多中…' : '';
-    $('topbar-meta').textContent = `抓取 ${allRaw.length} 筆 / 篩出 ${currentResults.length} 筆${statusSuffix}`;
-
-    // 第一頁抓完後就開放搜尋按鈕
-    if (p === 1) {
-      $('btn-search').disabled = false;
-      $('btn-search').textContent = '開始搜尋';
-    }
+    if (p === 1) { $('btn-search').disabled = false; $('btn-search').textContent = '開始搜尋'; }
   }
-
-  // 最終更新
   if (window._searchId !== searchId) return;
   currentResults = filterAndMap(allRaw);
-  renderResults('full');
+  renderResults();
   $('btn-export').disabled = currentResults.length === 0;
-  const failNote = failed ? '（部分頁面抓取失敗）' : '';
-  $('topbar-meta').textContent = `抓取 ${allRaw.length} 筆 / 篩出 ${currentResults.length} 筆 · 完成${failNote}`;
+  $('topbar-meta').textContent = `抓取 ${allRaw.length} 筆 / 篩出 ${currentResults.length} 筆 · 完成${failed ? '（部分失敗）' : ''}`;
 }
 
 // ----- Render -----
-let _lastRenderedCount = 0;
-let _metaAbort = 0; // 每次 full 重繪 +1,舊的 meta 抓取檢測到就停止
+let _metaAbort = 0;
 
-function renderResults(mode) {
-  mode = mode || 'full';
+function renderResults() {
+  _metaAbort++;
+  const myAbort = _metaAbort;
 
-  if (mode === 'full') {
-    _metaAbort++; // 中斷之前的 meta 抓取
-  }
   const sort = $('sort').value;
   const sorted = [...currentResults].sort((a, b) => {
-    if (sort === 'date-desc') return (b.date || '').localeCompare(a.date || '');
-    if (sort === 'date-asc') return (a.date || '').localeCompare(b.date || '');
+    if (sort === 'date-desc') return (b.date||'').localeCompare(a.date||'');
+    if (sort === 'date-asc') return (a.date||'').localeCompare(b.date||'');
     if (sort === 'amount-desc') return b.amount - a.amount;
     if (sort === 'amount-asc') return a.amount - b.amount;
     return 0;
   });
 
-  // 合併同標題的標案(同一機關 + 同標題視為「歷次重招」)
-  // 群組 key:title + unit(因為不同機關偶有撞名)
-  const grouped = [];
-  const groupMap = {};
+  // Group same-title
+  const grouped = [], groupMap = {};
   for (const r of sorted) {
-    const key = (r.title || '').trim() + '||' + (r.unit || '');
-    if (groupMap[key] != null) {
-      // 已有主筆 → 加入 siblings
-      grouped[groupMap[key]].siblings.push(r);
-    } else {
-      // 第一筆 = 主筆(因為 sorted 已排序,date-desc 時這就是最新)
-      groupMap[key] = grouped.length;
-      grouped.push({ ...r, siblings: [] });
-    }
+    const key = (r.title||'').trim() + '||' + (r.unit||'');
+    if (groupMap[key] != null) grouped[groupMap[key]].siblings.push(r);
+    else { groupMap[key] = grouped.length; grouped.push({...r, siblings:[]}); }
   }
 
-  const total = grouped.length;
-  const totalRaw = sorted.length;
-  const tenderCount = sorted.filter(r => r.type === 'tender').length;
-  const awardCount = sorted.filter(r => r.type === 'award').length;
-  const totalAmount = sorted.reduce((s, r) => s + r.amount, 0);
-
-  // 暫存供歷史展開功能使用(用合併後的)
   window._sortedResults = grouped;
-
+  const total = grouped.length, totalRaw = sorted.length;
   $('s-total').textContent = total.toLocaleString();
-  $('s-tender').textContent = tenderCount.toLocaleString();
-  $('s-award').textContent = awardCount.toLocaleString();
-  $('s-amount').innerHTML = fmtTotalAmount(totalAmount);
-
-  // 標題顯示「合併 N 筆,原始 M 筆」
-  if (totalRaw > total) {
-    $('result-head-title').textContent = `結果列表 · ${total} 筆(已合併 ${totalRaw - total} 筆同名)`;
-  } else {
-    $('result-head-title').textContent = `結果列表 · ${total} 筆`;
-  }
+  $('s-tender').textContent = sorted.filter(r=>r.type==='tender').length.toLocaleString();
+  $('s-award').textContent = sorted.filter(r=>r.type==='award').length.toLocaleString();
+  $('s-amount').innerHTML = fmtTotalAmount(sorted.reduce((s,r)=>s+r.amount,0));
+  $('result-head-title').textContent = totalRaw > total ? `結果列表 · ${total} 筆（已合併 ${totalRaw-total} 筆同名）` : `結果列表 · ${total} 筆`;
 
   const body = $('result-body');
+  body.innerHTML = '';
+
   if (grouped.length === 0) {
-    body.innerHTML = `<div class="state"><div class="state-icon">∅</div><div class="state-title">沒有符合的標案</div><div class="state-desc">試試這幾個方向:<br>1. 把「必須包含」減少一個關鍵字<br>2. 「機關名稱」清空試試<br>3. 主要關鍵字改寬一點(例如只輸入「資訊」)<br>4. 把「抓取頁數」調大</div></div>`;
+    body.innerHTML = '<div class="state"><div class="state-icon">∅</div><div class="state-title">沒有符合的標案</div><div class="state-desc">試試減少關鍵字、清空機關名稱或調大抓取頁數。</div></div>';
     return;
   }
 
-  const startIdx = (mode === 'append') ? _lastRenderedCount : 0;
-  if (mode === 'full') { body.innerHTML = ''; _lastRenderedCount = 0; }
-
+  // Batch render 10 at a time
+  let cursor = 0;
   const BATCH = 10;
-  let cursor = startIdx;
 
   function renderBatch() {
+    if (_metaAbort !== myAbort) return; // aborted
     const end = Math.min(cursor + BATCH, grouped.length);
-    const fragment = document.createDocumentFragment();
+    const frag = document.createDocumentFragment();
     for (let i = cursor; i < end; i++) {
       const r = grouped[i];
-      const sibCount = (r.siblings || []).length;
-      const sibBadge = sibCount > 0
-        ? `<span class="sib-badge" title="同名標案歷次重招 ${sibCount} 次">↻ 重招 ${sibCount} 次</span>`
-        : '';
-      const sibBtn = sibCount > 0
-        ? `<button class="btn-history" onclick="toggleSiblings(${i}, event)">↻ 展開歷次招標 (${sibCount + 1} 筆) ▾</button>`
-        : '';
+      const sibCount = (r.siblings||[]).length;
       const card = document.createElement('div');
       card.className = 'tender-card';
-      card.dataset.idx = i;
       card.innerHTML = `
-        <div class="tender-card-main" onclick="openDetail(${i}, event)">
+        <div class="tender-card-main" onclick="openDetail(${i})">
           <div class="tender-card-top">
             <span class="tag tag-${r.type}">${r.typeLabel}</span>
             <span class="tender-date">${fmtDate(r.date)}</span>
             ${r.amount > 0 ? `<span class="tender-amount">${fmtMoney(r.amount)}</span>` : ''}
-            ${sibBadge}
+            ${sibCount > 0 ? `<span class="sib-badge">↻ 重招 ${sibCount} 次</span>` : ''}
           </div>
-          <div class="tender-title">${escapeHtml(r.title)}</div>
-          <div class="tender-unit">${escapeHtml(r.unit) || '(機關未填)'}</div>
-          <div class="tender-meta-row" id="meta-${i}">
-            <span class="meta-loading">載入截標 / 開標 / 公告金額…</span>
-          </div>
+          <div class="tender-title">${escHtml(r.title)}</div>
+          <div class="tender-unit">${escHtml(r.unit) || '(機關未填)'}</div>
+          <div class="tender-meta" id="meta-${i}"><span class="meta-na">載入中…</span></div>
         </div>
-        ${sibBtn ? `<div class="tender-sib-bar">${sibBtn}</div>` : ''}
-        <div class="tender-siblings" id="siblings-${i}" style="display:none;"></div>
+        ${sibCount > 0 ? `<div class="tender-sib-bar"><button onclick="toggleSiblings(${i},event)">↻ 展開歷次招標 (${sibCount+1} 筆) ▾</button></div>` : ''}
+        <div class="tender-siblings" id="sib-${i}" style="display:none;"></div>
       `;
-      fragment.appendChild(card);
+      frag.appendChild(card);
     }
-    body.appendChild(fragment);
-    fetchMetaForRange(grouped, cursor, end);
+    body.appendChild(frag);
+
+    // Fetch meta for this batch
+    fetchMetaBatch(grouped, cursor, end, myAbort);
+
     cursor = end;
-    _lastRenderedCount = cursor;
     if (cursor < grouped.length) requestAnimationFrame(renderBatch);
   }
   renderBatch();
 }
 
-function escapeHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({
-    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
-  }[c]));
-}
-
-// ----- 背景抓截標/開標時間(每張卡片) -----
-function fmtTimeStr(raw) {
-  // 政府格式可能是 "115/05/21 09:30" 或 "11505210930"
-  if (!raw) return '';
-  raw = String(raw).trim();
-  // 已含斜線就直接用
-  if (raw.indexOf('/') !== -1) return raw;
-  // 11505210930 → 115/05/21 09:30
-  const m = raw.match(/^(\d{3})(\d{2})(\d{2})(\d{2})?(\d{2})?/);
-  if (m) {
-    let s = `${m[1]}/${m[2]}/${m[3]}`;
-    if (m[4]) s += ' ' + m[4] + (m[5] ? ':' + m[5] : '');
-    return s;
-  }
-  return raw;
-}
-
-// ----- 詳情側邊面板 -----
-const detailCache = {};         // 快取已載入過的詳情
-let metaBgFailures = 0;
-const META_MAX_FAILURES = 3;
-
-// 從 tender API 回傳資料抽出截標/開標/公告金額
-function extractMetaFromTender(data) {
-  const records = data.records || [];
-  if (records.length === 0) return {};
-  // 取最新一筆
-  const sorted = [...records].sort((a, b) => String(b.date).localeCompare(String(a.date)));
-  const latest = sorted[0];
-  const detail = latest.detail || {};
-
-  let deadline = '', openTime = '', announceAmount = '';
-
-  // 判斷一個 detail 值是不是「真的金額」— 必須含至少 3 位以上的數字
-  const looksLikeAmount = (v) => {
-    if (!v) return false;
-    const s = String(v);
-    // 拒絕純「是 / 否 / 不公開」這類值
-    if (/^[是否不公開無未填]+$/.test(s.trim())) return false;
-    // 必須含 4+ 位連續數字(避免「是」「否」「1.2 公頃」這種誤判)
-    const digits = (s.match(/\d/g) || []).join('');
-    return digits.length >= 4;
-  };
-
-  // 截標
-  for (const k of Object.keys(detail)) {
-    const v = detail[k];
-    if (!v) continue;
-    if (k.indexOf('截止投標') !== -1 || k.indexOf('截標時間') !== -1) { deadline = String(v); break; }
-  }
-  // 開標
-  for (const k of Object.keys(detail)) {
-    const v = detail[k];
-    if (!v) continue;
-    if (k.indexOf('開標時間') !== -1) { openTime = String(v); break; }
-  }
-  // 公告金額(優先級:預算金額 > 公告金額 > 決標金額)
-  // 嚴格排除「是否公開」「金額是否公開」「金額級距」等非數字欄位
-  const tryKeys = ['預算金額', '公告金額', '總決標金額', '決標金額'];
-  for (const target of tryKeys) {
-    for (const k of Object.keys(detail)) {
-      // 必須是 key 結尾為目標詞(避免「預算金額是否公開」)
-      if (k.endsWith(target) || k === target || k.endsWith(':' + target)) {
-        const v = detail[k];
-        if (looksLikeAmount(v)) {
-          announceAmount = String(v);
-          break;
-        }
-      }
-    }
-    if (announceAmount) break;
-  }
-
-  return {
-    deadline: fmtTimeStr(deadline),
-    openTime: fmtTimeStr(openTime),
-    announceAmount: announceAmount,
-  };
-}
-
-function isUrgentTime(timeStr) {
-  if (!timeStr) return false;
-  const m = timeStr.match(/^(\d{3})\/(\d{2})\/(\d{2})/);
-  if (!m) return false;
-  const year = parseInt(m[1]) + 1911;
-  const target = new Date(year, parseInt(m[2]) - 1, parseInt(m[3]));
-  const now = new Date();
-  const diffDays = (target - now) / 86400000;
-  return diffDays >= 0 && diffDays <= 7;
-}
-
-function renderCardMeta(idx, meta) {
-  const el = document.getElementById('meta-' + idx);
-  if (!el) return;
-  const items = [];
-  if (meta.deadline) {
-    const cls = isUrgentTime(meta.deadline) ? 'meta-value urgent' : 'meta-value';
-    items.push(`<span class="meta-item"><span class="meta-label">截標</span><span class="${cls}">${escapeHtml(meta.deadline)}</span></span>`);
-  }
-  if (meta.openTime) {
-    const cls = isUrgentTime(meta.openTime) ? 'meta-value urgent' : 'meta-value';
-    items.push(`<span class="meta-item"><span class="meta-label">開標</span><span class="${cls}">${escapeHtml(meta.openTime)}</span></span>`);
-  }
-  if (meta.announceAmount) {
-    items.push(`<span class="meta-item"><span class="meta-label">公告金額</span><span class="meta-value meta-amount">${escapeHtml(meta.announceAmount)}</span></span>`);
-  }
-  if (items.length === 0) {
-    el.innerHTML = '<span class="meta-na">— 無時程或金額資訊</span>';
-  } else {
-    el.innerHTML = items.join('');
-  }
-}
-
-// 只對指定範圍的卡片抓 meta
-async function fetchMetaForRange(grouped, start, end) {
-  let failures = 0;
-  const abortId = _metaAbort; // 記住啟動時的 ID
-  for (let i = start; i < end; i++) {
-    if (_metaAbort !== abortId) return; // 被新的 full 重繪中斷了
-    const r = grouped[i];
-    const el = document.getElementById('meta-' + i);
-    if (!el) continue;
-    if (!r.unitId || !r.jobNo) {
-      el.innerHTML = '<span class="meta-na">—</span>';
-      continue;
-    }
-    const cacheKey = r.unitId + '|' + r.jobNo;
-    if (detailCache[cacheKey]) {
-      renderCardMeta(i, extractMetaFromTender(detailCache[cacheKey]));
-      continue;
-    }
-    if (failures >= 3) {
-      el.innerHTML = '<span class="meta-na">— 暫停</span>';
-      continue;
-    }
-    try {
-      const url = `https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      detailCache[cacheKey] = data;
-      updateCacheBadge();
-      renderCardMeta(i, extractMetaFromTender(data));
-      failures = 0;
-    } catch (e) {
-      failures++;
-      el.innerHTML = '<span class="meta-na">— 載入失敗</span>';
-    }
-    await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 150));
-  }
-}
-
-async function fetchMetaInBackground(grouped) {
-  metaBgFailures = 0;
-  for (let i = 0; i < grouped.length; i++) {
-    const r = grouped[i];
-    const el = document.getElementById('meta-' + i);
-    if (!el) continue; // 卡片可能已被新搜尋取代
-
-    if (!r.unitId || !r.jobNo) {
-      el.innerHTML = '<span class="meta-na">— 無 API 索引</span>';
-      continue;
-    }
-
-    const cacheKey = r.unitId + '|' + r.jobNo;
-    if (detailCache[cacheKey]) {
-      renderCardMeta(i, extractMetaFromTender(detailCache[cacheKey]));
-      continue;
-    }
-
-    if (metaBgFailures >= META_MAX_FAILURES) {
-      el.innerHTML = '<span class="meta-na">— 暫停載入(請求過密,點卡片仍可查詳情)</span>';
-      continue;
-    }
-
-    try {
-      const url = `https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      detailCache[cacheKey] = data; // 連帶把詳情面板也快取了
-      updateCacheBadge();
-      renderCardMeta(i, extractMetaFromTender(data));
-      metaBgFailures = 0;
-    } catch (e) {
-      metaBgFailures++;
-      el.innerHTML = '<span class="meta-na">— 載入失敗</span>';
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 150 + Math.random() * 150));
-  }
-}
+// ----- Meta fetching (截標/開標/金額) -----
+const detailCache = {};
 
 function updateCacheBadge() {
   const n = Object.keys(detailCache).length;
-  const el = document.getElementById('cache-badge');
-  const cnt = document.getElementById('cache-badge-count');
-  if (!el) return;
-  if (n === 0) {
-    el.style.display = 'none';
-  } else {
-    el.style.display = 'block';
-    if (cnt) cnt.textContent = n;
+  const el = $('cache-badge');
+  if (n > 0) { el.style.display = 'block'; $('cache-count').textContent = n; }
+  else el.style.display = 'none';
+}
+
+async function fetchMetaBatch(grouped, start, end, abortId) {
+  let failures = 0;
+  for (let i = start; i < end; i++) {
+    if (_metaAbort !== abortId) return;
+    const r = grouped[i];
+    const el = $('meta-' + i);
+    if (!el) continue;
+    if (!r.unitId || !r.jobNo) { el.innerHTML = '<span class="meta-na">—</span>'; continue; }
+    const ck = r.unitId + '|' + r.jobNo;
+    if (detailCache[ck]) { renderMeta(el, detailCache[ck]); continue; }
+    if (failures >= 3) { el.innerHTML = '<span class="meta-na">— 暫停</span>'; continue; }
+    try {
+      const res = await fetch(`https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}`);
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      detailCache[ck] = data;
+      updateCacheBadge();
+      renderMeta(el, data);
+      failures = 0;
+    } catch(e) { failures++; el.innerHTML = '<span class="meta-na">— 失敗</span>'; }
+    await new Promise(r => setTimeout(r, 150 + Math.random()*150));
   }
+}
+
+function extractMeta(data) {
+  const recs = data.records || [];
+  if (!recs.length) return {};
+  const latest = [...recs].sort((a,b) => String(b.date).localeCompare(String(a.date)))[0];
+  const d = latest.detail || {};
+  let deadline='', openTime='', amount='';
+  const tryAmt = ['預算金額','公告金額','總決標金額','決標金額'];
+  for (const k of Object.keys(d)) {
+    const v = d[k]; if (!v) continue;
+    if (k.indexOf('截止投標')!==-1 || k.indexOf('截標時間')!==-1) deadline = String(v);
+    else if (k.indexOf('開標時間')!==-1) openTime = String(v);
+  }
+  for (const target of tryAmt) {
+    for (const k of Object.keys(d)) {
+      if ((k.endsWith(target) || k.endsWith(':'+target)) && k.indexOf('是否')===-1 && looksLikeAmount(d[k])) { amount = String(d[k]); break; }
+    }
+    if (amount) break;
+  }
+  return { deadline: fmtTimeStr(deadline), openTime: fmtTimeStr(openTime), amount };
+}
+
+function renderMeta(el, data) {
+  const m = extractMeta(data);
+  const items = [];
+  if (m.deadline) { const u = isUrgent(m.deadline); items.push(`<span class="meta-item"><span class="meta-label">截標</span><span class="meta-val${u?' urgent':''}">${escHtml(m.deadline)}</span></span>`); }
+  if (m.openTime) { const u = isUrgent(m.openTime); items.push(`<span class="meta-item"><span class="meta-label">開標</span><span class="meta-val${u?' urgent':''}">${escHtml(m.openTime)}</span></span>`); }
+  if (m.amount) items.push(`<span class="meta-item"><span class="meta-label">公告金額</span><span class="meta-val">${escHtml(m.amount)}</span></span>`);
+  el.innerHTML = items.length ? items.join('') : '<span class="meta-na">— 無時程資訊</span>';
+}
+
+// ----- Detail panel -----
+function openDetail(idx) {
+  const r = (window._sortedResults||[])[idx];
+  if (!r) return;
+  const panel = $('detail-panel'), overlay = $('detail-overlay'), head = $('detail-head-info'), body = $('detail-body');
+  head.innerHTML = `
+    <div class="detail-eyebrow"><span class="tag tag-${r.type}">${r.typeLabel}</span> <span>${fmtDate(r.date)}</span> ${r.amount>0?'<span>· '+fmtMoney(r.amount)+'</span>':''}</div>
+    <div class="detail-title">${escHtml(r.title)}</div>
+    <div class="detail-unit">${escHtml(r.unit)||'(機關未填)'}</div>
+  `;
+  panel.classList.add('show'); overlay.classList.add('show');
+  const ck = r.unitId+'|'+r.jobNo;
+  if (detailCache[ck]) { renderDetail(body, detailCache[ck], r); return; }
+  body.innerHTML = '<div class="state"><span class="spinner"></span><div style="margin-top:14px;font-size:13px;color:var(--text-soft);">載入詳情…</div></div>';
+  (async()=>{
+    try {
+      const res = await fetch(`https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}`);
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      detailCache[ck] = data; updateCacheBadge();
+      renderDetail(body, data, r);
+    } catch(e) { body.innerHTML = `<div class="state" style="color:var(--accent);">載入失敗: ${escHtml(e.message)}<br><a href="${r.url}" target="_blank" style="color:var(--accent);">改用採購網查看 →</a></div>`; }
+  })();
 }
 
 function closeDetail() {
-  document.getElementById('detail-panel').classList.remove('show');
-  document.getElementById('detail-overlay').classList.remove('show');
-  document.getElementById('detail-panel').setAttribute('aria-hidden', 'true');
+  $('detail-panel').classList.remove('show');
+  $('detail-overlay').classList.remove('show');
 }
+$('detail-close').addEventListener('click', closeDetail);
+$('detail-overlay').addEventListener('click', closeDetail);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
 
-async function openDetail(idx, ev) {
-  ev.stopPropagation();
-  const r = (window._sortedResults || [])[idx];
-  if (!r) return;
-  const panel = document.getElementById('detail-panel');
-  const overlay = document.getElementById('detail-overlay');
-  const headInfo = document.getElementById('detail-head-info');
-  const body = document.getElementById('detail-body');
-
-  // 標題先顯示(用主卡資訊)
-  headInfo.innerHTML = `
-    <div class="detail-head-eyebrow">
-      <span class="tag tag-${r.type}">${r.typeLabel}</span>
-      <span>${fmtDate(r.date)}</span>
-      ${r.amount > 0 ? `<span>· ${escapeHtml(fmtMoney(r.amount))}</span>` : ''}
-    </div>
-    <div class="detail-head-title">${escapeHtml(r.title)}</div>
-    <div class="detail-head-sub">
-      <span class="unit-name">${escapeHtml(r.unit) || '(機關未填)'}</span>
-    </div>
-  `;
-
-  // 打開面板
-  panel.classList.add('show');
-  overlay.classList.add('show');
-  panel.setAttribute('aria-hidden', 'false');
-
-  const cacheKey = r.unitId + '|' + r.jobNo;
-  if (detailCache[cacheKey]) {
-    renderDetail(body, detailCache[cacheKey], r);
-    return;
-  }
-
-  // 顯示載入中
-  body.innerHTML = `
-    <div class="detail-loading">
-      <span class="spinner"></span>
-      <div style="margin-top:14px;font-size:13px;">從 g0v 載入完整詳情…</div>
-    </div>
-  `;
-
-  try {
-    const url = `https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    detailCache[cacheKey] = data;
-    updateCacheBadge();
-    renderDetail(body, data, r);
-  } catch (e) {
-    body.innerHTML = `
-      <div class="detail-error">
-        載入失敗:${escapeHtml(e.message)}<br>
-        可能是網路或 API 暫時忙線,稍後再試。<br>
-        <a href="${r.url}" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;color:var(--accent);">改用採購網原始公告查看 →</a>
-      </div>
-    `;
-  }
-}
+// White-list fields
+const WL = {
+  '🏆 決標資訊': ['決標廠商','廠商名稱','廠商代碼','統一編號','決標金額','預算金額','底價金額','底價','總決標金額','決標日期','決標方式'],
+  '📋 招標資訊': ['標案案號','標案名稱','採購名稱','採購類別','標的分類','招標方式','採購方式','決標方式','機關名稱','單位名稱','採購單位','機關地址','聯絡人','聯絡電話','傳真號碼','電子郵件信箱','公告日期','截止投標','截止收件','截標時間','開標時間','開標日期','預算或預估','公告金額'],
+  '💰 押標金與保證金': ['押標金','押標金金額','保證金','保證金金額','履約保證金','保固保證金','招標文件售價','招標文件費'],
+  '📝 資格與說明': ['廠商資格','投標資格','基本資格','附加說明','附註'],
+};
 
 function renderDetail(body, data, mainR) {
-  const records = data.records || [];
-  if (records.length === 0) {
-    body.innerHTML = '<div class="detail-error">查無詳細資料</div>';
-    return;
+  const recs = data.records || [];
+  if (!recs.length) { body.innerHTML = '<div class="state">查無資料</div>'; return; }
+  const sorted = [...recs].sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  const latest = sorted[0], detail = latest.detail || {};
+
+  // Hero
+  const meta = extractMeta(data);
+  let html = '';
+  if (meta.deadline || meta.openTime || meta.amount) {
+    let items = '';
+    if (meta.deadline) { const u=isUrgent(meta.deadline); items += `<div class="hero-item${u?' urgent':''}"><div class="hero-label">截止投標</div><div class="hero-value">${escHtml(meta.deadline)}</div></div>`; }
+    if (meta.openTime) { const u=isUrgent(meta.openTime); items += `<div class="hero-item${u?' urgent':''}"><div class="hero-label">開標時間</div><div class="hero-value">${escHtml(meta.openTime)}</div></div>`; }
+    if (meta.amount) items += `<div class="hero-item"><div class="hero-label">公告金額</div><div class="hero-value">${escHtml(meta.amount)}</div></div>`;
+    html += `<div class="detail-hero">${items}</div>`;
   }
 
-  // 取最新一筆當主要顯示資料
-  const sorted = [...records].sort((a, b) => String(b.date).localeCompare(String(a.date)));
-  const latest = sorted[0];
-  const detail = latest.detail || {};
-
-  // 抽出關鍵時間/金額做成 hero
-  const meta = extractMetaFromTender(data);
-  let heroHtml = '';
-  if (meta.deadline || meta.openTime || meta.announceAmount) {
-    const items = [];
-    if (meta.deadline) {
-      const urg = isUrgentTime(meta.deadline);
-      items.push(`
-        <div class="detail-hero-item${urg ? ' urgent' : ''}">
-          <div class="detail-hero-label">截止投標</div>
-          <div class="detail-hero-value">${escapeHtml(meta.deadline)}</div>
-        </div>
-      `);
-    }
-    if (meta.openTime) {
-      const urg = isUrgentTime(meta.openTime);
-      items.push(`
-        <div class="detail-hero-item${urg ? ' urgent' : ''}">
-          <div class="detail-hero-label">開標時間</div>
-          <div class="detail-hero-value">${escapeHtml(meta.openTime)}</div>
-        </div>
-      `);
-    }
-    if (meta.announceAmount) {
-      items.push(`
-        <div class="detail-hero-item">
-          <div class="detail-hero-label">公告金額</div>
-          <div class="detail-hero-value">${escapeHtml(meta.announceAmount)}</div>
-        </div>
-      `);
-    }
-    if (items.length > 0) {
-      heroHtml = `<div class="detail-hero">${items.join('')}</div>`;
-    }
-  }
-
-  // 白名單:只顯示這些重要欄位(label 是冒號後面的部分)
-  // 用模糊比對,只要 label 包含這些關鍵字就顯示
-  const importantFields = {
-    '🏆 決標資訊': [
-      '決標廠商', '廠商名稱', '廠商代碼', '統一編號',
-      '決標金額', '預算金額', '底價金額', '底價', '總決標金額',
-      '決標日期', '決標方式',
-    ],
-    '📋 招標資訊': [
-      '標案案號', '標案名稱', '採購名稱',
-      '採購類別', '標的分類',
-      '招標方式', '採購方式', '決標方式',
-      '機關名稱', '單位名稱', '採購單位',
-      '機關地址',
-      '聯絡人', '聯絡電話', '傳真號碼', '電子郵件信箱',
-      '公告日期', '截止投標', '截止收件', '截標時間',
-      '開標時間', '開標日期',
-      '預算或預估', '公告金額',
-    ],
-    '💰 押標金與保證金': [
-      '押標金', '押標金金額', '保證金', '保證金金額',
-      '履約保證金', '保固保證金',
-      '招標文件售價', '招標文件費',
-    ],
-    '📝 資格與說明': [
-      '廠商資格', '投標資格', '基本資格',
-      '附加說明', '附註',
-    ],
-  };
-
-  // 從 detail 抽出白名單內的欄位
-  const sections = {};
-  for (const secName of Object.keys(importantFields)) {
-    sections[secName] = [];
-  }
-
-  for (const k of Object.keys(detail)) {
-    const v = detail[k];
-    if (v == null || v === '') continue;
-    if (k === 'type' || k === 'url' || k === 'pkPmsMain') continue;
-
-    // 取冒號後的 label
-    const colonIdx = k.indexOf(':');
-    const label = colonIdx > 0 ? k.substring(colonIdx + 1) : k;
-
-    // 檢查是否在白名單中
-    for (const secName of Object.keys(importantFields)) {
-      const keywords = importantFields[secName];
-      const matched = keywords.some(kw => label.indexOf(kw) !== -1);
-      if (matched) {
-        // 過濾掉「是否」類的布林欄位(「預算金額是否公開」等)
-        if (label.indexOf('是否') !== -1) continue;
-        sections[secName].push({ label: label, value: String(v) });
-        break; // 找到就不再往下個 section 對
-      }
-    }
-  }
-
-  let html = heroHtml;
-
-  // 本案所有公告(時間軸)
-  if (records.length > 1) {
-    // 暫存當前 records 供展開用
-    window._timelineRecords = sorted;
-    window._timelineMainR = mainR;
-
-    const tlRows = sorted.map((rec, idx) => {
-      const b = rec.brief || {};
-      const t = b.type || '公告';
-      const tk = classifyType(t);
-      const dotColors = {
-        tender: 'var(--tender)', award: 'var(--award)',
-        rental: 'var(--rental)', sell: 'var(--sell)',
-        amend: 'var(--amend)', other: 'var(--other)'
-      };
-      const dotColor = dotColors[tk] || 'var(--text-faint)';
-      const isLatest = idx === 0;
-
-      // 金額
-      const amt = extractAmount(rec, b);
-      const amtStr = amt > 0 ? fmtMoney(amt) : '';
-
-      // 廠商(決標時)
-      const companies = extractCompanies(rec, b);
-      let compStr = '';
-      if (companies.length > 0) {
-        const disp = companies.length <= 2 ? companies.join('、') : companies.slice(0,2).join('、') + ` 等 ${companies.length} 家`;
-        compStr = `<div class="tl-company" title="${escapeHtml(companies.join('、'))}">得標:${escapeHtml(disp)}</div>`;
-      }
-
-      return `
-        <div class="tl-item">
-          <button type="button" class="tl-row${isLatest ? ' tl-latest' : ''}" onclick="toggleTimelineItem(${idx}, this)">
-            <div class="tl-dot" style="background:${dotColor};"></div>
-            <div class="tl-content">
-              <div class="tl-top">
-                <span class="tl-type">${escapeHtml(t)}</span>
-                ${isLatest ? '<span class="tl-tag-latest">最新</span>' : ''}
-              </div>
-              <div class="tl-meta">
-                <span class="tl-date">${fmtDate(String(rec.date))}</span>
-                ${amtStr ? `<span class="tl-amount">${amtStr}</span>` : ''}
-              </div>
-              ${compStr}
-            </div>
-            <div class="tl-arrow">展開 ▾</div>
-          </button>
-          <div class="tl-expand" id="tl-expand-${idx}" style="display:none;"></div>
-        </div>
-      `;
-    }).join('');
-
-    html += `
-      <section class="detail-section detail-timeline">
-        <button type="button" class="detail-section-toggle" onclick="toggleTimelineSection(this)">
-          <span class="section-icon">🗂</span> 本案所有公告 · ${records.length} 筆
-          <span class="toggle-arrow">▾</span>
+  // Timeline (collapsible)
+  if (recs.length > 1) {
+    window._tlRecs = sorted; window._tlMainR = mainR;
+    let tlHtml = sorted.map((rec, idx) => {
+      const b = rec.brief||{}, t = b.type||'公告', tk = classifyType(t);
+      const colors = {tender:'var(--tender)',award:'var(--award)',rental:'var(--rental)',sell:'var(--sell)',amend:'var(--amend)',other:'var(--other)'};
+      const amt = extractAmount(rec, b), amtStr = amt>0 ? fmtMoney(amt) : '';
+      const cos = extractCompanies(rec, b);
+      const coStr = cos.length ? `<div class="tl-co">得標:${escHtml(cos.length<=2?cos.join('、'):cos.slice(0,2).join('、')+' 等'+cos.length+'家')}</div>` : '';
+      return `<div class="tl-item">
+        <button type="button" class="tl-row${idx===0?' tl-latest':''}" onclick="toggleTlItem(${idx},this)">
+          <div class="tl-dot" style="background:${colors[tk]||'var(--text-faint)'}"></div>
+          <div><div style="display:flex;gap:8px;align-items:center"><span class="tl-type">${escHtml(t)}</span>${idx===0?'<span class="tl-tag-latest">最新</span>':''}</div>
+            <div class="tl-meta"><span class="tl-date">${fmtDate(String(rec.date))}</span>${amtStr?`<span class="tl-amt">${amtStr}</span>`:''}</div>${coStr}</div>
+          <div class="tl-arrow">展開 ▾</div>
         </button>
-        <div class="tl-list" id="tl-list-main" style="display:none;">${tlRows}</div>
-      </section>
-    `;
+        <div class="tl-expand" id="tl-exp-${idx}" style="display:none;"></div>
+      </div>`;
+    }).join('');
+    html += `<section class="detail-section detail-tl">
+      <button type="button" class="tl-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'flex':'none';this.querySelector('.tl-toggle-arrow').textContent=this.nextElementSibling.style.display==='none'?'▾':'▴'">
+        🗂 本案所有公告 · ${recs.length} 筆 <span class="tl-toggle-arrow">▾</span>
+      </button>
+      <div class="tl-list" style="display:none;flex-direction:column;">${tlHtml}</div>
+    </section>`;
   }
 
-  for (const secName of Object.keys(sections)) {
-    const items = sections[secName];
-    if (items.length === 0) continue;
-
-    html += `
-      <section class="detail-section">
-        <div class="detail-section-title">
-          <span class="section-icon">${secName.substring(0, 2)}</span> ${secName.substring(2).trim()}
-        </div>
-        <div class="detail-grid">
-    `;
-    for (const it of items) {
-      let cls = '';
-      if (it.label.indexOf('金額') !== -1 || it.label.indexOf('底價') !== -1) cls = 'amount';
-      else if (it.label.indexOf('廠商') !== -1 || it.label.indexOf('廠商名稱') !== -1) cls = 'company';
-      else if (it.label.indexOf('時間') !== -1 || it.label.indexOf('日期') !== -1) cls = 'time';
-      const isLong = it.label.length > 10 || it.value.length > 100;
-      const rowCls = isLong ? 'detail-grid-row long' : 'detail-grid-row';
-      const cleanValue = String(it.value)
-        .replace(/\t/g, ' ')
-        .replace(/\u3000/g, ' ')
-        .replace(/ {2,}/g, ' ')
-        .replace(/\n{3,}/g, '\n\n')
-        .replace(/^[ \n]+|[ \n]+$/g, '');
-      html += `<div class="${rowCls}"><dt>${escapeHtml(it.label)}</dt><dd class="${cls}">${escapeHtml(cleanValue)}</dd></div>`;
+  // Sections from white-list
+  const sections = {};
+  for (const sec of Object.keys(WL)) sections[sec] = [];
+  for (const k of Object.keys(detail)) {
+    const v = detail[k]; if (v==null||v==='') continue;
+    if (k==='type'||k==='url'||k==='pkPmsMain') continue;
+    const ci = k.indexOf(':');
+    const label = ci>0 ? k.substring(ci+1) : k;
+    if (label.indexOf('是否')!==-1) continue;
+    for (const sec of Object.keys(WL)) {
+      if (WL[sec].some(kw => label.indexOf(kw)!==-1)) { sections[sec].push({label,value:String(v)}); break; }
     }
-    html += `</div></section>`;
+  }
+  for (const sec of Object.keys(sections)) {
+    const items = sections[sec]; if (!items.length) continue;
+    html += `<section class="detail-section"><div class="detail-sec-title">${sec}</div><div class="detail-grid">`;
+    for (const it of items) {
+      const isLong = it.label.length>10 || it.value.length>100;
+      let cls = '';
+      if (it.label.indexOf('金額')!==-1||it.label.indexOf('底價')!==-1) cls='amt';
+      else if (it.label.indexOf('廠商')!==-1) cls='co';
+      else if (it.label.indexOf('時間')!==-1||it.label.indexOf('日期')!==-1) cls='tm';
+      html += `<div class="d-row${isLong?' long':''}"><dt>${escHtml(it.label)}</dt><dd class="${cls}">${escHtml(cleanText(it.value))}</dd></div>`;
+    }
+    html += '</div></section>';
   }
 
-  html += `
-    <div class="detail-actions">
-      <a href="${mainR.url}" target="_blank" rel="noopener">採購網原始公告 →</a>
-      <a href="${mainR.altUrl}" target="_blank" rel="noopener" class="secondary">g0v 整理頁 →</a>
-    </div>
-  `;
-
+  html += `<div class="detail-actions">
+    <a href="${mainR.url}" target="_blank" class="act-primary">採購網原始公告 →</a>
+    <a href="${mainR.altUrl}" target="_blank" class="act-secondary">g0v 整理頁 →</a>
+  </div>`;
   body.innerHTML = html;
 }
 
-// ESC 鍵與點背景關閉面板
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeDetail();
-});
-
-// ----- Siblings (歷次重招) -----
-function toggleSiblings(idx, ev) {
-  ev.stopPropagation();
-  const r = (window._sortedResults || [])[idx];
-  if (!r) return;
-  const box = document.getElementById('siblings-' + idx);
-  const btn = ev.currentTarget;
-  if (!box) return;
-
-  if (box.style.display !== 'none') {
-    box.style.display = 'none';
-    btn.innerHTML = `展開歷次招標 (${r.siblings.length + 1}) ▾`;
-    return;
-  }
-
-  box.style.display = 'block';
-  btn.innerHTML = '收起 ▴';
-
-  // 把主筆 + siblings 都列出來,依日期由新到舊
-  const all = [r, ...r.siblings].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  // 把當前展開的 siblings 暫存到全域,讓 openSiblingDetail 取得
-  window._currentSiblings = all;
-  const rowsHtml = all.map((s, ii) => {
-    const isMain = ii === 0;
-    return `
-      <button type="button" class="sib-row${isMain ? ' sib-row-main' : ''}" onclick="openSiblingDetail(${ii}, event)">
-        <span class="tag tag-${s.type}" style="font-size:9px;padding:2px 6px;">${s.typeLabel}</span>
-        <span class="sib-date">${fmtDate(s.date)}</span>
-        <span class="sib-jobno">${escapeHtml(s.jobNo || '—')}</span>
-        <span class="sib-amount">${s.amount > 0 ? fmtMoney(s.amount) : ''}</span>
-        <span class="sib-link">詳情 →</span>
-      </button>
-    `;
-  }).join('');
-
-  box.innerHTML = `
-    <div class="sib-header">同標題歷次招標(依日期由新到舊)</div>
-    <div class="sib-list">${rowsHtml}</div>
-  `;
-}
-
-// 「本案所有公告」標題:展開/收合整個時間軸
-function toggleTimelineSection(btn) {
-  const list = btn.nextElementSibling;
-  const arrow = btn.querySelector('.toggle-arrow');
-  if (!list) return;
-  if (list.style.display === 'none') {
-    list.style.display = 'flex';
-    if (arrow) arrow.textContent = '▴';
-  } else {
-    list.style.display = 'none';
-    if (arrow) arrow.textContent = '▾';
-  }
-}
-
-// 點時間軸某一列:就地展開該筆公告的重要欄位
-function toggleTimelineItem(idx, btn) {
-  const expandEl = document.getElementById('tl-expand-' + idx);
-  if (!expandEl) return;
+// Timeline item expand/collapse
+function toggleTlItem(idx, btn) {
+  const el = $('tl-exp-' + idx);
+  if (!el) return;
   const arrow = btn.querySelector('.tl-arrow');
-
-  if (expandEl.style.display !== 'none') {
-    expandEl.style.display = 'none';
-    if (arrow) arrow.textContent = '展開 ▾';
-    return;
-  }
-
-  // 已渲染過就直接展開
-  if (expandEl.dataset.loaded === 'true') {
-    expandEl.style.display = 'block';
-    if (arrow) arrow.textContent = '收合 ▴';
-    return;
-  }
-
-  const rec = (window._timelineRecords || [])[idx];
+  if (el.style.display !== 'none') { el.style.display='none'; if(arrow)arrow.textContent='展開 ▾'; return; }
+  if (el.dataset.loaded) { el.style.display='block'; if(arrow)arrow.textContent='收合 ▴'; return; }
+  const rec = (window._tlRecs||[])[idx];
   if (!rec) return;
-  const detail = rec.detail || {};
-
-  if (Object.keys(detail).length === 0) {
-    expandEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text-faint);">此筆無詳細資料</div>';
-    expandEl.style.display = 'block';
-    expandEl.dataset.loaded = 'true';
-    if (arrow) arrow.textContent = '收合 ▴';
-    return;
-  }
-
-  // 用白名單抽出重要欄位
-  const wl = {
-    '決標': ['決標廠商','廠商名稱','廠商代碼','統一編號','決標金額','預算金額','底價金額','底價','總決標金額','決標日期','決標方式'],
-    '招標': ['標案案號','標案名稱','採購名稱','採購類別','標的分類','招標方式','採購方式','決標方式','機關名稱','單位名稱','採購單位','機關地址','聯絡人','聯絡電話','傳真號碼','電子郵件信箱','公告日期','截止投標','截止收件','截標時間','開標時間','開標日期','預算或預估','公告金額'],
-    '押標金': ['押標金','押標金金額','保證金','保證金金額','履約保證金','保固保證金','招標文件售價','招標文件費'],
-    '資格': ['廠商資格','投標資格','基本資格','附加說明','附註'],
-  };
-
+  const d = rec.detail || {};
   let rows = '';
-  for (const k of Object.keys(detail)) {
-    const v = detail[k];
-    if (v == null || v === '') continue;
-    if (k === 'type' || k === 'url' || k === 'pkPmsMain') continue;
-    const colonIdx = k.indexOf(':');
-    const label = colonIdx > 0 ? k.substring(colonIdx + 1) : k;
-    if (label.indexOf('是否') !== -1) continue;
-
+  for (const k of Object.keys(d)) {
+    const v = d[k]; if (v==null||v==='') continue;
+    if (k==='type'||k==='url'||k==='pkPmsMain') continue;
+    const ci = k.indexOf(':');
+    const label = ci>0?k.substring(ci+1):k;
+    if (label.indexOf('是否')!==-1) continue;
     let matched = false;
-    for (const sec of Object.keys(wl)) {
-      if (wl[sec].some(kw => label.indexOf(kw) !== -1)) { matched = true; break; }
-    }
+    for (const sec of Object.keys(WL)) { if (WL[sec].some(kw=>label.indexOf(kw)!==-1)){matched=true;break;} }
     if (!matched) continue;
-
-    const cleanValue = String(v).replace(/\t/g,' ').replace(/\u3000/g,' ').replace(/ {2,}/g,' ').replace(/\n{3,}/g,'\n\n').replace(/^[ \n]+|[ \n]+$/g,'');
-    const isLong = label.length > 10 || cleanValue.length > 80;
-    rows += `
-      <div class="tl-detail-row${isLong ? ' long' : ''}">
-        <span class="tl-detail-label">${escapeHtml(label)}</span>
-        <span class="tl-detail-value">${escapeHtml(cleanValue)}</span>
-      </div>
-    `;
+    const isLong = label.length>10||String(v).length>80;
+    rows += `<div class="tl-d-row${isLong?' long':''}"><span class="tl-d-label">${escHtml(label)}</span><span class="tl-d-value">${escHtml(cleanText(String(v)))}</span></div>`;
   }
-
-  if (!rows) {
-    expandEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text-faint);">此筆無重要欄位</div>';
-  } else {
-    expandEl.innerHTML = `<div class="tl-detail-grid">${rows}</div>`;
-  }
-  expandEl.style.display = 'block';
-  expandEl.dataset.loaded = 'true';
+  el.innerHTML = rows || '<div style="padding:8px;font-size:12px;color:var(--text-faint);">無重要欄位</div>';
+  el.style.display = 'block'; el.dataset.loaded = 'true';
   if (arrow) arrow.textContent = '收合 ▴';
 }
 
-// 從「本案所有公告」時間軸打開詳情面板(保留但不再從 UI 觸發)
-async function openTimelineDetail(tlIdx, ev) {
+// ----- Siblings -----
+function toggleSiblings(idx, ev) {
   ev.stopPropagation();
-  const rec = (window._timelineRecords || [])[tlIdx];
-  const mainR = window._timelineMainR;
-  if (!rec || !mainR) return;
-
-  const panel = document.getElementById('detail-panel');
-  const overlay = document.getElementById('detail-overlay');
-  const headInfo = document.getElementById('detail-head-info');
-  const body = document.getElementById('detail-body');
-
-  const brief = rec.brief || {};
-  const t = brief.type || '公告';
-
-  headInfo.innerHTML = `
-    <div class="detail-head-eyebrow">
-      <span class="tag tag-${classifyType(t)}">${escapeHtml(t)}</span>
-      <span>${fmtDate(String(rec.date))}</span>
-    </div>
-    <div class="detail-head-title">${escapeHtml(brief.title || mainR.title)}</div>
-    <div class="detail-head-sub">
-      <span class="unit-name">${escapeHtml(mainR.unit) || '(機關未填)'}</span>
-    </div>
-  `;
-
-  panel.classList.add('show');
-  overlay.classList.add('show');
-  panel.setAttribute('aria-hidden', 'false');
-
-  // 這筆 record 的 detail 已經在手上(從 detailCache 或 tender API 取得的 data.records 中)
-  // 直接用 rec.detail 渲染，不用再打 API
-  const detail = rec.detail || {};
-  if (Object.keys(detail).length === 0) {
-    body.innerHTML = '<div class="detail-error">這筆公告沒有詳細資料</div>';
-    return;
-  }
-
-  // 用 renderDetail 的邏輯，但直接從這筆 record 渲染
-  const fakeData = { records: [rec] };
-  renderDetail(body, fakeData, mainR);
-}
-
-// 從 siblings 列表打開詳情面板 — 用 _currentSiblings 取資料
-async function openSiblingDetail(siblingIdx, ev) {
-  ev.stopPropagation();
-  const s = (window._currentSiblings || [])[siblingIdx];
-  if (!s) return;
-
-  const panel = document.getElementById('detail-panel');
-  const overlay = document.getElementById('detail-overlay');
-  const headInfo = document.getElementById('detail-head-info');
-  const body = document.getElementById('detail-body');
-
-  // 標題先顯示
-  headInfo.innerHTML = `
-    <div class="detail-head-eyebrow">
-      <span class="tag tag-${s.type}">${s.typeLabel}</span>
-      <span>${fmtDate(s.date)}</span>
-      ${s.amount > 0 ? `<span>· ${escapeHtml(fmtMoney(s.amount))}</span>` : ''}
-    </div>
-    <div class="detail-head-title">${escapeHtml(s.title)}</div>
-    <div class="detail-head-sub">
-      <span class="unit-name">${escapeHtml(s.unit) || '(機關未填)'}</span>
-    </div>
-  `;
-
-  panel.classList.add('show');
-  overlay.classList.add('show');
-  panel.setAttribute('aria-hidden', 'false');
-
-  const cacheKey = s.unitId + '|' + s.jobNo;
-  if (detailCache[cacheKey]) {
-    renderDetail(body, detailCache[cacheKey], s);
-    return;
-  }
-
-  body.innerHTML = `
-    <div class="detail-loading">
-      <span class="spinner"></span>
-      <div style="margin-top:14px;font-size:13px;">從 g0v 載入完整詳情…</div>
-    </div>
-  `;
-
-  try {
-    const url = `https://pcc-api.openfun.app/api/tender?unit_id=${encodeURIComponent(s.unitId)}&job_number=${encodeURIComponent(s.jobNo)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-    detailCache[cacheKey] = data;
-    updateCacheBadge();
-    renderDetail(body, data, s);
-  } catch (e) {
-    body.innerHTML = `
-      <div class="detail-error">
-        載入失敗:${escapeHtml(e.message)}<br>
-        可能是網路或 API 暫時忙線,稍後再試。
-      </div>
-    `;
-  }
-}
-
-// ----- History expand -----
-// 快取已抓過的案件歷史,避免重複呼叫 API
-const historyCache = {};
-
-// 從各種可能的欄位抓出廠商名稱(回傳去重後陣列)
-function extractCompanies(rec, brief) {
-  const names = new Set();
-  brief = brief || {};
-
-  // 收集可能的廠商名稱欄位
-  const candidates = [
-    brief.companies && brief.companies.names,
-    brief.companies && brief.companies.name_key && Object.keys(brief.companies.name_key),
-    brief.companies && brief.companies.id_key && Object.values(brief.companies.id_key),
-    brief.companys && brief.companys.names,             // typo 變體
-    rec.companies && rec.companies.names,
-    rec.brief_companies && rec.brief_companies.names,
-    brief.award && brief.award.companies,
-    brief.award_companies,
-    brief.winning_companies,
-    brief.contractor_names,
-    brief.vendor_names,
-  ];
-
-  // 逐個展開放進 set
-  for (const c of candidates) {
-    if (!c) continue;
-    if (Array.isArray(c)) {
-      for (const item of c) {
-        if (typeof item === 'string' && item.trim()) names.add(item.trim());
-        else if (item && typeof item === 'object' && item.name) names.add(item.name.trim());
-      }
-    } else if (typeof c === 'string' && c.trim()) {
-      // 可能是逗號分隔字串
-      c.split(/[,,、;;]/).forEach(s => { if (s.trim()) names.add(s.trim()); });
-    }
-  }
-
-  // 嘗試從 detail 中的「採購資料:得標廠商」欄位 (深層資料才會有,通常 searchbytitle 抓不到)
-  if (rec.detail && typeof rec.detail === 'object') {
-    for (const k of Object.keys(rec.detail)) {
-      if (k.indexOf('得標廠商') !== -1 || k.indexOf('得標廠商:廠商名稱') !== -1) {
-        const v = rec.detail[k];
-        if (typeof v === 'string' && v.trim()) names.add(v.trim());
-      }
-    }
-  }
-
-  return Array.from(names);
-}
-
-// 從各種可能的欄位抓出金額
-function extractAmount(rec, brief) {
-  brief = brief || {};
-  const candidates = [
-    brief.companies && brief.companies.amount,
-    brief.amount,
-    brief.budget,
-    brief.award_amount,
-    brief.total_amount,
-    brief.predicted_amount,
-    brief.budget_amount,
-    rec.amount,
-  ];
-  for (const v of candidates) {
-    if (v == null) continue;
-    const n = Number(v);
-    if (!isNaN(n) && n > 0) return n;
-  }
-  // 嘗試從 detail 抓
-  if (rec.detail && typeof rec.detail === 'object') {
-    for (const k of Object.keys(rec.detail)) {
-      if (k.indexOf('預算金額') !== -1 || k.indexOf('決標金額') !== -1 || k.indexOf('總決標金額') !== -1) {
-        const raw = rec.detail[k];
-        if (raw) {
-          const n = Number(String(raw).replace(/[^0-9]/g, ''));
-          if (!isNaN(n) && n > 0) return n;
-        }
-      }
-    }
-  }
-  return 0;
-}
-
-async function toggleHistory(idx, ev) {
-  ev.stopPropagation();
-  const r = (window._sortedResults || [])[idx];
+  const r = (window._sortedResults||[])[idx];
   if (!r) return;
-  const box = document.getElementById('history-' + idx);
-  const btn = ev.currentTarget;
+  const box = $('sib-'+idx), btn = ev.currentTarget;
   if (!box) return;
-
-  // 切換顯示
-  if (box.style.display !== 'none') {
-    box.style.display = 'none';
-    btn.innerHTML = '查看本案所有公告 ▾';
-    return;
-  }
-
+  if (box.style.display !== 'none') { box.style.display='none'; btn.textContent=`↻ 展開歷次招標 (${r.siblings.length+1} 筆) ▾`; return; }
   box.style.display = 'block';
-  btn.innerHTML = '收起 ▴';
-
-  const cacheKey = r.unitId + '|' + r.jobNo;
-  if (historyCache[cacheKey]) {
-    renderHistory(box, historyCache[cacheKey], r);
-    return;
-  }
-
-  box.innerHTML = `<div class="history-loading"><span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:-2px;"></span> 載入歷史紀錄...</div>`;
-
-  try {
-    const url = 'https://pcc-api.openfun.app/api/tender?unit_id=' +
-                encodeURIComponent(r.unitId) +
-                '&job_number=' + encodeURIComponent(r.jobNo);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('API ' + res.status);
-    const data = await res.json();
-    const records = data.records || [];
-    historyCache[cacheKey] = records;
-    renderHistory(box, records, r);
-  } catch (e) {
-    box.innerHTML = `<div class="history-loading" style="color:var(--accent);">載入失敗:${escapeHtml(e.message)}。可能是網路或 API 暫時忙線,請稍後再試。</div>`;
-  }
+  btn.textContent = '收起 ▴';
+  window._currentSiblings = [r, ...r.siblings].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  box.innerHTML = `<div class="sib-header">同標題歷次招標（依日期由新到舊）</div>` +
+    window._currentSiblings.map((s, ii) => `
+      <button type="button" class="sib-row${ii===0?' sib-row-main':''}" onclick="openSibDetail(${ii})">
+        <span class="tag tag-${s.type}" style="font-size:9px;padding:2px 6px;">${s.typeLabel}</span>
+        <span class="sib-date">${fmtDate(s.date)}</span>
+        <span style="flex:1">${escHtml(s.jobNo||'')}</span>
+        <span class="sib-amount">${s.amount>0?fmtMoney(s.amount):''}</span>
+        <span class="sib-arrow">詳情 →</span>
+      </button>
+    `).join('');
 }
 
-function renderHistory(box, records, r) {
-  if (!records || records.length === 0) {
-    box.innerHTML = '<div class="history-loading">這筆案件目前只有當前一筆公告,沒有其他歷史紀錄。</div>';
-    return;
-  }
-
-  // 依日期由新到舊排序
-  const sorted = [...records].sort((a, b) => String(b.date).localeCompare(String(a.date)));
-
-  const rowsHtml = sorted.map(rec => {
-    const brief = rec.brief || {};
-    const t = brief.type || '';
-    const tk = classifyType(t);
-    const dotColors = {
-      tender: 'var(--tender)', award: 'var(--award)',
-      rental: 'var(--rental)', sell: 'var(--sell)',
-      amend: 'var(--amend)', other: 'var(--other)'
-    };
-    const dotColor = dotColors[tk] || 'var(--text-faint)';
-    const typeShort = t || '公告';
-
-    // 萬用直連 URL — 所有 filename 前綴適用
-    const filename = rec.filename || '';
-    let recUrl = '';
-    if (filename && rec.date) {
-      recUrl = `https://web.pcc.gov.tw/prkms/tender/common/noticeDate/redirectPublic?ds=${rec.date}&fn=${encodeURIComponent(filename)}.xml`;
-    }
-
-    // 金額 — 多欄位包容嘗試
-    const amtNum = extractAmount(rec, brief);
-    const amtStr = amtNum > 0 ? fmtMoney(amtNum) : '';
-
-    // 得標廠商 — 多欄位包容嘗試
-    const companyNames = extractCompanies(rec, brief);
-    let companyStr = '';
-    if (companyNames.length > 0) {
-      // 為了避免太長被截掉,多家廠商時顯示前 2 家 + "等 N 家"
-      let displayNames;
-      if (companyNames.length <= 2) {
-        displayNames = companyNames.join('、');
-      } else {
-        displayNames = companyNames.slice(0, 2).join('、') + ` 等 ${companyNames.length} 家`;
-      }
-      const fullList = companyNames.join('、');
-      companyStr = `<span class="hist-company" title="${escapeHtml(fullList)}">得標:${escapeHtml(displayNames)}</span>`;
-    }
-
-    // 整行用 g0v viewer 當主連結(若無採購網直連也能用),採購網直連另開於右側
-    const altUrl = `https://openfunltd.github.io/pcc-viewer/tender.html?unit_id=${encodeURIComponent(r.unitId)}&job_number=${encodeURIComponent(r.jobNo)}&filename=${encodeURIComponent(filename)}`;
-    const mainHref = recUrl || altUrl;
-
-    return `
-      <a href="${mainHref}" target="_blank" rel="noopener" class="hist-row">
-        <div class="hist-dot" style="background:${dotColor};"></div>
-        <div class="hist-date">${fmtDate(String(rec.date))}</div>
-        <div class="hist-type">${escapeHtml(typeShort)}</div>
-        <div class="hist-meta">
-          ${amtStr ? `<span class="hist-amount">${amtStr}</span>` : ''}
-          ${companyStr}
-        </div>
-        <div class="hist-link">
-          ${recUrl ? '採購網 →' : '<span style="color:var(--text-faint);font-size:11px;">詳情頁 →</span>'}
-        </div>
-      </a>
-    `;
-  }).join('');
-
-  box.innerHTML = `
-    <div class="history-header">本案共 ${records.length} 筆公告</div>
-    <div class="history-list">${rowsHtml}</div>
-  `;
+function openSibDetail(sibIdx) {
+  const s = (window._currentSiblings||[])[sibIdx];
+  if (!s) return;
+  // Create a temporary "sorted result" entry and open detail
+  const tmpIdx = window._sortedResults.length;
+  window._sortedResults.push(s);
+  openDetail(tmpIdx);
 }
 
-// ----- Export CSV -----
+// ----- CSV Export -----
 function exportCSV() {
-  if (currentResults.length === 0) return;
-  const headers = ['類型', '公告日期', '標案名稱', '機關', '金額', '連結'];
-  const lines = [headers.join(',')];
+  if (!currentResults.length) return;
+  const h = ['類型','公告日期','標案名稱','機關','金額','連結'];
+  const lines = [h.join(',')];
   for (const r of currentResults) {
-    const row = [
-      r.typeLabel,
-      fmtDate(r.date),
-      r.title,
-      r.unit,
-      r.amount ? r.amount : '',
-      r.url,
-    ].map(v => {
-      const s = String(v == null ? '' : v);
-      return (s.includes(',') || s.includes('"') || s.includes('\n'))
-        ? '"' + s.replace(/"/g, '""') + '"' : s;
-    });
-    lines.push(row.join(','));
+    lines.push([r.typeLabel, fmtDate(r.date), r.title, r.unit, r.amount||'', r.url].map(v => {
+      const s = String(v==null?'':v);
+      return s.indexOf(',')!==-1||s.indexOf('"')!==-1||s.indexOf('\n')!==-1 ? '"'+s.replace(/"/g,'""')+'"' : s;
+    }).join(','));
   }
-  const csv = '\ufeff' + lines.join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
+  const blob = new Blob(['\uFEFF'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `標案_${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast('已下載 CSV 檔');
+  a.href = URL.createObjectURL(blob);
+  a.download = '標案探勘_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('CSV 已下載');
 }
 
-// ----- Reset -----
 function reset() {
-  $('query').value = '資訊';
-  $('include').value = '';
-  $('exclude').value = '維護, 保養';
-  $('unit').value = '';
-  $('pages').value = '3';
-  $('date-from').value = '';
-  $('date-to').value = '';
-  document.querySelectorAll('.date-quick button').forEach(b => b.classList.remove('active'));
-  currentTypes = new Set(['tender', 'award']);
-  syncTypeCheckboxes();
-  saveSettings();
-  toast('條件已重置');
+  $('query').value = '資訊'; $('include').value = ''; $('exclude').value = '維護, 保養';
+  $('unit').value = ''; $('pages').value = '3'; $('date-from').value = ''; $('date-to').value = '';
+  document.querySelectorAll('#date-quick button').forEach(b => b.classList.remove('active'));
+  currentTypes = new Set(['tender','award']); syncTypes(); saveSettings(); toast('已重置');
 }
-
-// ----- Date quick buttons -----
-function setDateRange(days) {
-  if (days === 0) {
-    $('date-from').value = '';
-    $('date-to').value = '';
-  } else {
-    const today = new Date();
-    const from = new Date(today.getTime() - days * 86400000);
-    const fmt = d => d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0');
-    $('date-from').value = fmt(from);
-    $('date-to').value = fmt(today);
-  }
-  document.querySelectorAll('.date-quick button').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.days) === days);
-  });
-}
-document.querySelectorAll('.date-quick button').forEach(btn => {
-  btn.addEventListener('click', () => setDateRange(parseInt(btn.dataset.days)));
-});
-// 日期框手動改也要清掉快速鈕高亮
-['date-from', 'date-to'].forEach(id => {
-  $(id).addEventListener('change', () => {
-    document.querySelectorAll('.date-quick button').forEach(b => b.classList.remove('active'));
-  });
-});
 
 // ----- Wire up -----
 $('btn-search').addEventListener('click', search);
 $('btn-export').addEventListener('click', exportCSV);
 $('btn-reset').addEventListener('click', reset);
-$('sort').addEventListener('change', renderResults);
-document.querySelectorAll('.sb-input').forEach(el => {
-  el.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
-});
-
-// 詳情面板關閉事件
-document.getElementById('detail-close').addEventListener('click', closeDetail);
-document.getElementById('detail-overlay').addEventListener('click', closeDetail);
+$('sort').addEventListener('change', () => renderResults());
+document.querySelectorAll('.sb-input').forEach(el => { el.addEventListener('keydown', e => { if (e.key === 'Enter') search(); }); });
 
 loadSettings();
 </script>
-
 </body>
 </html>
